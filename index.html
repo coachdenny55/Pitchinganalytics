@@ -778,31 +778,6 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
         </div>
       </div>
 
-      <!-- Baserunner editor — diamond squares with jersey numbers, appears for all terminal pitches -->
-      <div id="base-editor-wrap" class="hidden">
-        <div style="height:1px;background:var(--border);margin:10px 0 12px;"></div>
-        <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">Runner positions after play — tap to toggle</div>
-        <div style="display:flex;justify-content:center;margin-bottom:6px;">
-          <div style="position:relative;width:180px;height:130px;">
-            <!-- 2B top center -->
-            <div id="be-2b" onclick="toggleBase('2b')"
-              style="position:absolute;width:48px;height:48px;top:0;left:50%;transform:translateX(-50%) rotate(45deg);border:2px solid var(--text3);background:var(--bg3);cursor:pointer;border-radius:3px;transition:all 0.1s;">
-              <span id="be-2b-num" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;transform:rotate(-45deg);font-size:11px;font-weight:700;color:var(--text2);"></span>
-            </div>
-            <!-- 1B right -->
-            <div id="be-1b" onclick="toggleBase('1b')"
-              style="position:absolute;width:48px;height:48px;bottom:0;right:0;transform:rotate(45deg);border:2px solid var(--text3);background:var(--bg3);cursor:pointer;border-radius:3px;transition:all 0.1s;">
-              <span id="be-1b-num" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;transform:rotate(-45deg);font-size:11px;font-weight:700;color:var(--text2);"></span>
-            </div>
-            <!-- 3B left -->
-            <div id="be-3b" onclick="toggleBase('3b')"
-              style="position:absolute;width:48px;height:48px;bottom:0;left:0;transform:rotate(45deg);border:2px solid var(--text3);background:var(--bg3);cursor:pointer;border-radius:3px;transition:all 0.1s;">
-              <span id="be-3b-num" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;transform:rotate(-45deg);font-size:11px;font-weight:700;color:var(--text2);"></span>
-            </div>
-          </div>
-        </div>
-        <p style="font-size:11px;color:var(--text3);text-align:center;margin-bottom:10px;margin-top:8px;">Yellow = occupied · jersey # shown</p>
-      </div>
 
       <input type="text" class="note-in" id="mod-note" placeholder="Pitch note (optional)..." style="margin-top:6px;">
 
@@ -1939,24 +1914,19 @@ function showEntryStep(s){
     if(hitTypeWrap) hitTypeWrap.classList.toggle('hidden', !(isBIP && isHit));
 
     document.getElementById('bip-mods').classList.toggle('hidden',!isBIP);
-    document.getElementById('base-editor-wrap').classList.toggle('hidden',!CE.isTerm);
 
-    if(CE.isTerm){
-      // snapshot pre-pitch runners before any auto-advance
+    if(CE.rt==='hr'){
+      // HR: snapshot runners now so autoFillRuns can count them, then clear bases
       preHitRunners=G&&G.runners?{b1:G.runners.b1,b2:G.runners.b2,b3:G.runners.b3}:{b1:null,b2:null,b3:null};
-      if(CE.rt==='hr'){
-        G.runners={b1:null,b2:null,b3:null};
-      } else if(CE.rt==='bb'||CE.rt==='hbp'||CE.rt==='ibb'||CE.rt==='ci'){
-        autoAdvanceForWalk(CE.rt);
-      }
-      syncBaseEditor();
-      showEarnedSuggest();
+      G.runners={b1:null,b2:null,b3:null};
+      autoFillRuns();
+    } else {
+      document.getElementById('mod-er').value=0;
+      document.getElementById('mod-ur').value=0;
     }
+    showEarnedSuggest();
 
     if(isBIP){ sprayModDot=null; drawSprayMod(); }
-    document.getElementById('mod-er').value=0;
-    document.getElementById('mod-ur').value=0;
-    if(CE.isTerm) autoFillRuns();
     document.getElementById('mod-note').value='';
 
     // reset contact mods
@@ -2222,6 +2192,8 @@ function confirmStep(){
 function logPitch(){
   if(!G)return;
   const p=curP();
+  // snapshot pre-play runners for auto-advance functions (HR already snapshotted in step 3)
+  if(CE.rt!=='hr') preHitRunners=G&&G.runners?{b1:G.runners.b1,b2:G.runners.b2,b3:G.runners.b3}:{b1:null,b2:null,b3:null};
   const pitch={
     id:'p_'+Date.now()+'_'+Math.random().toString(36).substr(2,4),
     appId:p?p.appId:'',
@@ -2254,12 +2226,26 @@ function logPitch(){
   }
   G.ourScore+=(pitch.er+pitch.ur);
 
+  // Auto-advance runners for non-HR terminal plays (HR handled in step 3)
+  if(pitch.isTerm && pitch.rt!=='hr'){
+    if(pitch.rt==='bb'||pitch.rt==='ibb'||pitch.rt==='hbp'||pitch.rt==='ci'||pitch.rt==='d3k'){
+      autoAdvanceForWalk(pitch.rt);
+    } else if(pitch.rt==='bip'&&pitch.bipOut==='hit'&&pitch.hitBases>0){
+      autoAdvanceRunners(pitch.hitBases);
+    }
+  }
+
   advanceCount(pitch);
   pendingZX=null; pendingZY=null; zoneConfirmed=false;
   sprayModDot=null;
   CE={pt:null,velo:null,result:null,rt:null,isStrike:false,isTerm:false,bipType:null,bipOut:null,hh:false,wc:false,dp:false,fc:false,ro:false,sx:null,sy:null,zx:null,zy:null,note:'',er:0,ur:0,hitBases:0};
   cancelEntry();
   save(); renderGame();
+
+  // Auto-open field event if terminal play left runners on base (inning not over)
+  if(pitch.isTerm && G.outs<3 && (G.runners.b1||G.runners.b2||G.runners.b3)){
+    showFieldEvent();
+  }
 }
 
 function advanceCount(pitch){
