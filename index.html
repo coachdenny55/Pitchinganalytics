@@ -386,10 +386,11 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
         <label>Competition Level</label>
         <select id="level-sel" onchange="S.team.level=this.value;save()">
           <option value="hs">High School</option>
-          <option value="d1">NCAA Division I</option>
-          <option value="d2">NCAA Division II</option>
-          <option value="d3">NCAA Division III</option>
+          <option value="juco">Junior College</option>
           <option value="naia">NAIA</option>
+          <option value="d3">NCAA Division III</option>
+          <option value="d2">NCAA Division II</option>
+          <option value="d1">NCAA Division I</option>
           <option value="other">Other</option>
         </select>
       </div>
@@ -609,7 +610,7 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
         <div class="entry-title" id="entry-title">Pitch Type</div>
         <div style="font-size:11px;color:var(--text3);margin-top:2px;" id="entry-sub"></div>
       </div>
-      <button class="undo-btn" onclick="undoLast()">↩ Edit Last</button>
+      <button class="undo-btn" onclick="undoLast()">↩ Back</button>
     </div>
 
     <!-- Step 1: pitch type + velo -->
@@ -2285,7 +2286,13 @@ function advanceCount(pitch){
 // UNDO
 // ══════════════════════════════════════════
 function undoLast(){
-  if(!G||!G.pitches.length){ cancelEntry(); return; }
+  const overlayOpen=document.getElementById('entry-ov').classList.contains('on');
+  if(overlayOpen){
+    if(eStep===3){ showEntryStep(2); return; }
+    if(eStep===2){ showEntryStep(1); return; }
+    cancelEntry(); return;
+  }
+  if(!G||!G.pitches.length) return;
   editLastPitchFromSummary();
 }
 
@@ -2733,21 +2740,40 @@ function setPitcherRating(i,stars,context){
 function showPitcherChange(){
   hideFieldEvent();
   const pitchers=S.pitchers.filter(p=>p.active!==false);
+
+  // Identify current and previously-used pitchers in this game
+  const activePitcher=G?G.pitchers[G.pitcherIdx]:null;
+  const activeKey=activePitcher?activePitcher.name+'|'+String(activePitcher.num||''):null;
+  const usedKeys=new Set();
+  if(G) G.pitchers.forEach((gp,i)=>{ if(i!==G.pitcherIdx) usedKeys.add(gp.name+'|'+String(gp.num||'')); });
+
   const cards=pitchers.map(p=>{
     const si=S.pitchers.indexOf(p);
     const stats=getPitcherSeasonStats(p);
     const isL=p.throws==='L';
     const circleColor=isL?'var(--accent)':'var(--red)';
     const circleBg=isL?'rgba(74,158,255,0.18)':'rgba(232,85,85,0.18)';
+    const pKey=p.name+'|'+String(p.num||'');
+    const isCurrent=activeKey===pKey;
+    const isUsed=!isCurrent&&usedKeys.has(pKey);
+    const cardOpacity=isCurrent?'opacity:0.55;':'';
+    const usedOpacity=isUsed?'opacity:0.4;':'';
+    const badge=isCurrent
+      ?`<span style="font-size:10px;font-weight:700;background:var(--accent);color:#fff;border-radius:3px;padding:1px 6px;margin-left:8px;vertical-align:middle;">IN</span>`
+      :isUsed
+      ?`<span style="font-size:10px;color:var(--text3);margin-left:8px;">Cannot re-enter</span>`
+      :'';
+    const actionBtn=isCurrent||isUsed?''
+      :`<button onclick="doPitcherChange('${p.name}','${p.throws}','${p.num||''}')" style="padding:8px 16px;background:var(--accent);border:none;border-radius:var(--rsm);color:#fff;font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0;">In</button>`;
     return `
-      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:10px;">
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:10px;${cardOpacity}${usedOpacity}">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
           <div style="width:38px;height:38px;border-radius:50%;background:${circleBg};color:${circleColor};font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${p.throws||'R'}</div>
           <div style="flex:1;min-width:0;">
-            <div style="font-size:15px;font-weight:700;">#${p.num||'—'} ${p.name}</div>
+            <div style="font-size:15px;font-weight:700;">#${p.num||'—'} ${p.name}${badge}</div>
             <div style="margin-top:4px;">${renderStars(p.rating,si,'change')}</div>
           </div>
-          <button onclick="doPitcherChange('${p.name}','${p.throws}','${p.num||''}')" style="padding:8px 16px;background:var(--accent);border:none;border-radius:var(--rsm);color:#fff;font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0;">In</button>
+          ${actionBtn}
         </div>
         <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;">
           <div style="text-align:center;background:var(--bg2);border-radius:var(--rsm);padding:6px 2px;">
@@ -2799,7 +2825,34 @@ function manualPChange(){
   doPitcherChange(name,mHand,document.getElementById('pc-num').value.trim());
 }
 function doPitcherChange(name,throws,num){
-  G.pitchers.push({name,throws,num,appId:'a_'+Date.now(),inning:G.inning,outs:G.outs,balls:G.balls,strikes:G.strikes,inhRunners:{...G.runners},pc:0,st:0,k:0,bb:0,hbp:0,h:0,er:0,ur:0,po:0});
+  const cur=curP();
+  if(cur && cur.pc===0 && G.pitchers.length>1){
+    // Only remove the entry if the game state is identical to when this pitcher entered.
+    // A pickoff changes outs, a balk changes score, a wild pitch moves runners —
+    // any of those means he actually did something even with 0 pitches.
+    const runnersMatch=['b1','b2','b3'].every(k=>
+      JSON.stringify(G.runners[k])===JSON.stringify((cur.inhRunners||{})[k])
+    );
+    const nothingHappened=
+      G.outs===cur.outs &&
+      G.inning===cur.inning && G.half===cur.half &&
+      G.ourScore===(cur.inhOurScore??G.ourScore) &&
+      G.oppScore===(cur.inhOppScore??G.oppScore) &&
+      runnersMatch;
+    if(nothingHappened){
+      G.pitchers.pop();
+      G.pitcherIdx=G.pitchers.length-1;
+    }
+  }
+  // After cleanup, if the target pitcher is already current, nothing to do
+  const now=curP();
+  if(now && now.name===name && String(now.num||'')===String(num||'')){
+    hideModal(); save(); renderGame(); return;
+  }
+  G.pitchers.push({name,throws,num,appId:'a_'+Date.now(),
+    inning:G.inning,outs:G.outs,balls:G.balls,strikes:G.strikes,
+    inhRunners:{...G.runners},inhOurScore:G.ourScore,inhOppScore:G.oppScore,
+    pc:0,st:0,k:0,bb:0,hbp:0,h:0,er:0,ur:0,po:0});
   G.pitcherIdx=G.pitchers.length-1;
   hideModal(); save(); renderGame();
 }
