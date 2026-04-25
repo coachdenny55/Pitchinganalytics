@@ -650,11 +650,11 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
           <button class="r-btn" id="r-swstr" onclick="pickR('Swing &amp; Miss','swstr',true,false)">Swing &amp; Miss</button>
           <button class="r-btn" onclick="pickR('Foul Ball','foul',false,false)">Foul Ball</button>
           <button class="r-btn" onclick="pickR('Ball','ball',false,false)">Ball</button>
-          <button class="r-btn" id="r-k" onclick="pickR('K (Swing)','k',true,true)">K</button>
-          <button class="r-btn" id="r-kc" onclick="pickR('ꓘ (Called)','kc',true,true)">ꓘ</button>
-          <button class="r-btn" id="r-bb" onclick="pickR('BB','bb',false,true)">BB</button>
           <button class="r-btn" onclick="pickR('HBP','hbp',false,true)">HBP</button>
           <button class="r-btn" onclick="pickR('IBB (no pitch)','ibb',false,true)">IBB</button>
+          <button class="r-btn" id="r-bb" onclick="pickR('BB','bb',false,true)">BB</button>
+          <button class="r-btn" id="r-k" onclick="pickR('K (Swing)','k',true,true)">K</button>
+          <button class="r-btn" id="r-kc" onclick="pickR('ꓘ (Called)','kc',true,true)">ꓘ</button>
           <button class="r-btn" id="d3k-sw" onclick="pickR('Dropped 3K Swing-E2','d3k',true,true)">Drop 3K Swing</button>
           <button class="r-btn" id="d3k-ca" onclick="pickR('Dropped 3K Called-E2','d3k',true,true)">Drop 3K Called</button>
           <button class="r-btn" onclick="pickR('Catchers Int.','ci',false,true)">Catcher Int</button>
@@ -695,8 +695,8 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
           <button class="r-btn" onclick="pickR('Fly Hit','bip',true,true,'FLY','hit')">Fly Hit</button>
           <button class="r-btn" onclick="pickR('Fly Out','bip',true,true,'FLY','out')">Fly Out</button>
           <button class="r-btn" onclick="pickR('Fly Error','bip',true,true,'FLY','error')">Fly Error</button>
-          <button class="r-btn" onclick="pickR('Home Run','hr',true,true,'FLY','hr')">Home Run</button>
-          <button class="r-btn" id="r-sac-fly" onclick="pickR('SAC Fly','bip',true,true,'FLY','sac')" style="grid-column:span 2;">SAC Fly</button>
+          <button class="r-btn" id="r-sac-fly" onclick="pickR('SAC Fly','bip',true,true,'FLY','sac')">SAC Fly</button>
+          <button class="r-btn" onclick="pickR('Home Run','hr',true,true,'FLY','hr')" style="grid-column:span 2;">Home Run</button>
         </div>
       </div>
 
@@ -720,7 +720,6 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
         <div class="result-grid" style="flex:1;grid-template-columns:repeat(3,1fr);">
           <button class="r-btn" onclick="pickR('Other - Safe','other',false,true)">Other Safe</button>
           <button class="r-btn" onclick="pickR('Other - Out','other',false,true)">Other Out</button>
-          <button class="r-btn" id="r-oob" onclick="pickR('Out on Bases','oob',false,true)">Out on Base</button>
         </div>
       </div>
     </div>
@@ -753,7 +752,6 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
           <button class="mod-btn" id="mod-dp" onclick="toggleMod('dp')" style="flex:1;min-width:80px;">Double Play</button>
           <button class="mod-btn" id="mod-fc" onclick="toggleMod('fc')" style="flex:1;min-width:80px;">Fielder's Choice</button>
-          <button class="mod-btn" id="mod-ro" onclick="toggleMod('ro')" style="flex:1;min-width:80px;">Runner Out</button>
         </div>
 
         <!-- Spray chart — fixed aspect ratio matching Field.png -->
@@ -783,22 +781,26 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
       <!-- Baserunner editor — diamond squares with jersey numbers, appears for all terminal pitches -->
       <div id="base-editor-wrap" class="hidden">
         <div style="height:1px;background:var(--border);margin:10px 0 12px;"></div>
-        <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">Runner positions after play — tap to toggle</div>
+        <div style="margin-bottom:10px;">
+          <button class="mod-btn" id="mod-ro" onclick="toggleRO()" style="width:100%;">+ Runner Out (extra out on bases)</button>
+        </div>
+        <div id="ro-picker" style="display:none;margin-bottom:10px;"></div>
+        <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">Runner positions after play</div>
         <div style="display:flex;justify-content:center;margin-bottom:6px;">
           <div style="position:relative;width:180px;height:130px;">
             <!-- 2B top center -->
-            <div id="be-2b" onclick="toggleBase('2b')"
-              style="position:absolute;width:48px;height:48px;top:0;left:50%;transform:translateX(-50%) rotate(45deg);border:2px solid var(--text3);background:var(--bg3);cursor:pointer;border-radius:3px;transition:all 0.1s;">
+            <div id="be-2b"
+              style="position:absolute;width:48px;height:48px;top:0;left:50%;transform:translateX(-50%) rotate(45deg);border:2px solid var(--text3);background:var(--bg3);border-radius:3px;transition:all 0.1s;">
               <span id="be-2b-num" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;transform:rotate(-45deg);font-size:11px;font-weight:700;color:var(--text2);"></span>
             </div>
             <!-- 1B right -->
-            <div id="be-1b" onclick="toggleBase('1b')"
-              style="position:absolute;width:48px;height:48px;bottom:0;right:0;transform:rotate(45deg);border:2px solid var(--text3);background:var(--bg3);cursor:pointer;border-radius:3px;transition:all 0.1s;">
+            <div id="be-1b"
+              style="position:absolute;width:48px;height:48px;bottom:0;right:0;transform:rotate(45deg);border:2px solid var(--text3);background:var(--bg3);border-radius:3px;transition:all 0.1s;">
               <span id="be-1b-num" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;transform:rotate(-45deg);font-size:11px;font-weight:700;color:var(--text2);"></span>
             </div>
             <!-- 3B left -->
-            <div id="be-3b" onclick="toggleBase('3b')"
-              style="position:absolute;width:48px;height:48px;bottom:0;left:0;transform:rotate(45deg);border:2px solid var(--text3);background:var(--bg3);cursor:pointer;border-radius:3px;transition:all 0.1s;">
+            <div id="be-3b"
+              style="position:absolute;width:48px;height:48px;bottom:0;left:0;transform:rotate(45deg);border:2px solid var(--text3);background:var(--bg3);border-radius:3px;transition:all 0.1s;">
               <span id="be-3b-num" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;transform:rotate(-45deg);font-size:11px;font-weight:700;color:var(--text2);"></span>
             </div>
           </div>
@@ -850,6 +852,7 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
         <button class="fe-btn" onclick="selectFE('Pickoff')">Pickoff</button>
         <button class="fe-btn" onclick="selectFE('Balk')">Balk</button>
         <button class="fe-btn" onclick="selectFE('Caught Stealing')">Caught Stealing</button>
+        <button class="fe-btn" onclick="selectFE('Runner Out')">Runner Out</button>
         <button class="fe-btn" onclick="selectFE('Clock-Pitcher')">Pitch Clock (P)</button>
         <button class="fe-btn" onclick="selectFE('Clock-Batter')">Pitch Clock (B)</button>
         <button class="fe-btn" onclick="selectFE('IBB')">Int. Walk (IBB)</button>
@@ -1914,7 +1917,7 @@ document.getElementById('spray-mod-cv').addEventListener('click',function(e){
 // ══════════════════════════════════════════
 // ENTRY FLOW
 // ══════════════════════════════════════════
-let CE={pt:null,velo:null,result:null,rt:null,isStrike:false,isTerm:false,bipType:null,bipOut:null,hh:false,wc:false,dp:false,fc:false,ro:false,sx:null,sy:null,zx:null,zy:null,note:'',er:0,ur:0,hitBases:0};
+let CE={pt:null,velo:null,result:null,rt:null,isStrike:false,isTerm:false,bipType:null,bipOut:null,hh:false,wc:false,dp:false,fc:false,ro:false,roBase:null,roRunner:null,sx:null,sy:null,zx:null,zy:null,note:'',er:0,ur:0,hitBases:0};
 let eStep=0;
 let preHitRunners=null;
 
@@ -1954,7 +1957,6 @@ function showEntryStep(s){
     setRBtn('d3k-ca',    _str<2||(_r.b1&&_out<2));
     setRBtn('r-sac-fly', _out>=2||!_hasR);
     setRBtn('r-sac-bunt',_out>=2);
-    setRBtn('r-oob',     !_hasR);
   } else if(s===3){
     cb.textContent='Log Pitch ✓'; cb.disabled=false;
     const isBIP=CE.rt==='bip'||CE.rt==='hr';
@@ -1974,6 +1976,8 @@ function showEntryStep(s){
         G.runners={b1:null,b2:null,b3:null};
       } else if(CE.rt==='bb'||CE.rt==='hbp'||CE.rt==='ibb'||CE.rt==='ci'){
         autoAdvanceForWalk(CE.rt);
+      } else if(CE.rt==='bip'&&CE.bipOut==='hit'&&CE.hitBases>0){
+        autoAdvanceRunners(CE.hitBases);
       }
       syncBaseEditor();
       showEarnedSuggest();
@@ -1986,11 +1990,12 @@ function showEntryStep(s){
     document.getElementById('mod-note').value='';
 
     // reset contact mods
-    CE.hh=false; CE.wc=false; CE.dp=false; CE.fc=false; CE.ro=false; CE.hitBases=0;
+    CE.hh=false; CE.wc=false; CE.dp=false; CE.fc=false; CE.ro=false; CE.roBase=null; CE.roRunner=null; CE.hitBases=0;
     ['hh','wc','dp','fc','ro'].forEach(m=>{
       const el=document.getElementById('mod-'+m);
       if(el) el.classList.remove('on');
     });
+    renderROPicker();
     ['single','double','triple'].forEach(t=>{
       const el=document.getElementById('ht-'+t);
       if(el) el.classList.remove('on');
@@ -2057,6 +2062,56 @@ function toggleMod(m){
   if(el) el.classList.toggle('on',CE[m]);
 }
 
+function toggleRO(){
+  CE.ro=!CE.ro;
+  const btn=document.getElementById('mod-ro');
+  if(btn) btn.classList.toggle('on',CE.ro);
+  if(!CE.ro){
+    if(CE.roBase&&CE.roRunner) G.runners[CE.roBase]=CE.roRunner;
+    CE.roBase=null; CE.roRunner=null;
+    syncBaseEditor();
+  }
+  renderROPicker();
+}
+
+function renderROPicker(){
+  const wrap=document.getElementById('ro-picker');
+  if(!wrap) return;
+  if(!CE.ro||!G){ wrap.style.display='none'; return; }
+  wrap.style.display='';
+  const baseLabel={b1:'1st',b2:'2nd',b3:'3rd'};
+  const candidates=['b1','b2','b3'].map(key=>{
+    const runner=G.runners[key]||(CE.roBase===key?CE.roRunner:null);
+    return runner?{key,runner}:null;
+  }).filter(Boolean);
+  if(!candidates.length){
+    wrap.innerHTML='<div style="font-size:12px;color:var(--text3);text-align:center;padding:4px 0;">No runners on base to select</div>';
+    return;
+  }
+  wrap.innerHTML='<div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Which runner was out?</div>'+
+    '<div style="display:flex;gap:6px;">'+
+    candidates.map(({key,runner})=>{
+      const sel=CE.roBase===key;
+      const name=runner.num?'#'+runner.num:(runner.name?(runner.name.split(' ').pop()||'?'):'?');
+      return `<button onclick="pickRORunner('${key}')" style="flex:1;padding:8px 4px;border-radius:var(--rsm);border:1.5px solid ${sel?'var(--red)':'var(--border2)'};background:${sel?'rgba(232,85,85,0.15)':'var(--bg3)'};color:${sel?'var(--red)':'var(--text)'};font-size:13px;font-weight:700;cursor:pointer;text-align:center;">${baseLabel[key]}<br><span style="font-size:10px;font-weight:400;color:${sel?'var(--red)':'var(--text2)'};">${name}</span></button>`;
+    }).join('')+
+    '</div>';
+}
+
+function pickRORunner(key){
+  if(CE.roBase===key){
+    if(CE.roRunner) G.runners[key]=CE.roRunner;
+    CE.roBase=null; CE.roRunner=null;
+  } else {
+    if(CE.roBase&&CE.roRunner) G.runners[CE.roBase]=CE.roRunner;
+    CE.roRunner=G.runners[key]||null;
+    CE.roBase=key;
+    G.runners[key]=null;
+  }
+  syncBaseEditor();
+  renderROPicker();
+}
+
 function toggleContact(type){
   if(type==='hh'){ CE.hh=!CE.hh; CE.wc=false; }
   else { CE.wc=!CE.wc; CE.hh=false; }
@@ -2076,9 +2131,12 @@ function pickHitType(bases){
   const labels={1:'Single',2:'Double',3:'Triple'};
   CE.result=CE.result.replace(/\s*·\s*(Single|Double|Triple)/,'')+'  · '+labels[bases];
 
+  // reset runner-out selection when hit type changes (positions shift)
+  if(CE.roBase){ CE.roBase=null; CE.roRunner=null; }
   // auto-advance runners immediately
   autoAdvanceRunners(bases);
   syncBaseEditor();
+  renderROPicker();
   showEarnedSuggest();
   autoFillRuns();
 }
@@ -2310,6 +2368,7 @@ function advanceCount(pitch){
     if(pitch.dp){ G.outs++; if(p)p.po++; }
   } else if(rt==='other'&&pitch.result.includes('Out')){ G.outs++; if(p)p.po++; }
   else if(rt==='oob'){ G.outs++; if(p)p.po++; }
+  if(pitch.ro){ G.outs++; if(p)p.po++; }
 
   G.balls=0; G.strikes=0;
   if(G.outs>=3){
@@ -2513,6 +2572,7 @@ function revertPitchStats(pitch){
       if(pitch.bipOut==='out'||pitch.bipOut==='error'){ G.outs--; if(p.po>0)p.po--; }
       if(pitch.dp){ G.outs--; if(p.po>0)p.po--; }
     }
+    if(pitch.ro){ G.outs--; if(p.po>0)p.po--; }
     else if(pitch.rt==='other'&&pitch.result.includes('Out')){ G.outs--; if(p.po>0)p.po--; }
     else if(pitch.rt==='oob'){ G.outs--; if(p.po>0)p.po--; }
   }
@@ -2636,7 +2696,7 @@ function showFEStep2(type){
   document.getElementById('fe-step1').style.display='none';
   document.getElementById('fe-step2').style.display='';
   document.getElementById('fe-s2-title').textContent=type+' — Move Runners';
-  if(type==='Caught Stealing'||type==='Pickoff'){
+  if(type==='Caught Stealing'||type==='Pickoff'||type==='Runner Out'){
     if(G.runners.b3) _feMoves['b3']='out';
     else if(G.runners.b2) _feMoves['b2']='out';
     else if(G.runners.b1) _feMoves['b1']='out';
