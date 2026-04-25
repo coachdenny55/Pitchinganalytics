@@ -1598,7 +1598,7 @@ function renderGame(){
     rp.className='silhouette-panel';
     rp.style.width=''; rp.style.borderLeft='none'; rp.style.borderRight='none';
     rp.innerHTML='';
-    if(ov){ ov.style.display=''; ov.style.left='auto'; ov.style.right='0'; }
+    if(ov){ ov.style.display='block'; ov.style.left='auto'; ov.style.right='0'; }
     if(ovImg) ovImg.style.transform='scaleX(-1)';
     renderPitchList(lp);
   } else {
@@ -1608,7 +1608,7 @@ function renderGame(){
     lp.innerHTML='';
     rp.className='pitch-panel';
     rp.style.width=''; rp.style.borderLeft='none'; rp.style.borderRight='none';
-    if(ov){ ov.style.display=''; ov.style.left='0'; ov.style.right='auto'; }
+    if(ov){ ov.style.display='block'; ov.style.left='0'; ov.style.right='auto'; }
     if(ovImg) ovImg.style.transform='';
     renderPitchList(rp);
   }
