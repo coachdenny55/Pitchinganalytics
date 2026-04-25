@@ -39,9 +39,20 @@
 /* Batter silhouette */
 .batter-image {
   width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: bottom center;
   opacity: 0.42;
   transition: opacity 0.2s ease;
   pointer-events: none;
+}
+#batter-overlay {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 140px;
+  pointer-events: none;
+  z-index: 3;
+  display: none;
 }
 
 .silhouette-panel img[style*="scaleX(-1)"] {
@@ -210,14 +221,14 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 .ab-detail-pitch-type { display: inline-block; min-width: 48px; color: var(--accent); font-weight: 700; }
 .ab-detail-pitch-result { display: inline-block; color: var(--text2); margin-left: 6px; }
 
-.game-area { display: grid; grid-template-rows: auto minmax(180px, 1fr); gap: 10px; width: 100%; min-height: 0; flex: 1; overflow: visible; }
+.game-area { display: grid; grid-template-rows: auto minmax(180px, 1fr); gap: 10px; width: 100%; min-height: 0; flex: 1; overflow: hidden; position: relative; }
 
 .spray-section { position: relative; width: 100%; aspect-ratio: 2 / 1; display: flex; align-items: stretch; justify-content: center; padding: 8px; overflow: hidden; }
 .spray-section canvas { width: 100%; height: 100%; display: block; max-width: 100%; }
 .field-event-btn { position: absolute; bottom: 8px; right: 8px; z-index: 5; padding: 6px 10px; background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--rsm); font-size: 11px; color: var(--text2); cursor: pointer; }
 .field-event-btn:active { background: var(--bg4); }
 
-.game-body { flex: 1; display: flex; flex-direction: row; flex-wrap: nowrap; overflow: visible; align-items: center; justify-content: center; width: 100%; min-height: 0; gap: 0; }
+.game-body { flex: 1; display: flex; flex-direction: row; flex-wrap: nowrap; overflow: hidden; align-items: center; justify-content: center; width: 100%; min-height: 0; gap: 0; }
 .silhouette-panel { width: 120px; min-width: 100px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; position: relative; }
 
 .zone-center-panel { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4px 2px; gap: 4px; position: relative; overflow: hidden; margin-top: 0; min-width: 180px; max-width: 260px; transform: translateY(-7px); }
@@ -581,6 +592,9 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
       <canvas id="spray-cv" width="400" height="200" style="display:block;cursor:default;width:100%;height:auto;"></canvas>
       <button class="field-event-btn" onclick="showFieldEvent()">Field Event</button>
     </div>
+
+    <!-- Batter overlay — absolutely positioned over full game-area height -->
+    <div id="batter-overlay"><img id="batter-overlay-img" src="batter-silhouette.png" class="batter-image" alt=""></div>
 
     <!-- Game body: silhouette | zone | pitch list -->
     <div class="game-body">
@@ -1575,29 +1589,27 @@ function renderGame(){
   const lp=document.getElementById('left-panel');
   const rp=document.getElementById('right-panel');
 
+  const ov=document.getElementById('batter-overlay');
+  const ovImg=document.getElementById('batter-overlay-img');
   if(hand==='L'){
-    // LHH: silhouette on right, pitch list on left
+    // LHH: pitch list on left, silhouette spacer on right
     lp.className='pitch-panel';
-    lp.style.width='';
-    lp.style.borderRight='none';
-    lp.style.borderLeft='none';
+    lp.style.width=''; lp.style.borderRight='none'; lp.style.borderLeft='none';
     rp.className='silhouette-panel';
-    rp.style.width='';
-    rp.style.borderLeft='none';
-    rp.style.borderRight='none';
-    rp.innerHTML='<img src="batter-silhouette.png" class="batter-image" style="transform:scaleX(-1);" alt="" />';
+    rp.style.width=''; rp.style.borderLeft='none'; rp.style.borderRight='none';
+    rp.innerHTML='';
+    if(ov){ ov.style.display=''; ov.style.left='auto'; ov.style.right='0'; }
+    if(ovImg) ovImg.style.transform='scaleX(-1)';
     renderPitchList(lp);
   } else {
-    // RHH: silhouette on left, pitch list on right
+    // RHH: silhouette spacer on left, pitch list on right
     lp.className='silhouette-panel';
-    lp.style.width='';
-    lp.style.borderRight='none';
-    lp.style.borderLeft='none';
-    lp.innerHTML='<img src="batter-silhouette.png" class="batter-image" alt="" />';
+    lp.style.width=''; lp.style.borderRight='none'; lp.style.borderLeft='none';
+    lp.innerHTML='';
     rp.className='pitch-panel';
-    rp.style.width='';
-    rp.style.borderLeft='none';
-    rp.style.borderRight='none';
+    rp.style.width=''; rp.style.borderLeft='none'; rp.style.borderRight='none';
+    if(ov){ ov.style.display=''; ov.style.left='0'; ov.style.right='auto'; }
+    if(ovImg) ovImg.style.transform='';
     renderPitchList(rp);
   }
 
