@@ -191,7 +191,7 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 .inning-block { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text2); }
 .inning-block .inning-num { font-size: 16px; font-weight: 800; color: var(--text); }
 
-.ab-row { display: flex; gap: 6px; padding: 6px 10px; overflow-x: auto; flex-shrink: 0; border-bottom: 1px solid var(--border); scrollbar-width: none; min-height: 82px; align-items: center; justify-content: center; }
+.ab-row { display: flex; gap: 6px; padding: 6px 10px; overflow-x: auto; flex-shrink: 0; scrollbar-width: none; min-height: 82px; align-items: center; justify-content: center; }
 .ab-row::-webkit-scrollbar { display: none; }
 .ab-thumb { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; }
 .ab-thumb:hover { opacity: 0.95; }
@@ -211,20 +211,20 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 
 .game-area { display: grid; grid-template-rows: auto minmax(180px, 1fr); gap: 10px; width: 100%; min-height: 0; flex: 1; overflow: hidden; }
 
-.spray-section { position: relative; width: 100%; aspect-ratio: 2 / 1; display: flex; align-items: stretch; justify-content: center; padding: 8px; border-bottom: 1px solid var(--border); overflow: hidden; }
+.spray-section { position: relative; width: 100%; aspect-ratio: 2 / 1; display: flex; align-items: stretch; justify-content: center; padding: 8px; overflow: hidden; }
 .spray-section canvas { width: 100%; height: 100%; display: block; max-width: 100%; }
 .field-event-btn { position: absolute; bottom: 8px; right: 8px; z-index: 5; padding: 6px 10px; background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--rsm); font-size: 11px; color: var(--text2); cursor: pointer; }
 .field-event-btn:active { background: var(--bg4); }
 
-.game-body { flex: 1; display: flex; flex-direction: row; flex-wrap: nowrap; overflow: hidden; align-items: center; justify-content: center; width: 100%; min-height: 0; gap: 10px; }
+.game-body { flex: 1; display: flex; flex-direction: row; flex-wrap: nowrap; overflow: hidden; align-items: center; justify-content: center; width: 100%; min-height: 0; gap: 0; }
 .silhouette-panel { width: 120px; min-width: 100px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; position: relative; }
 
-.zone-center-panel { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4px 2px; gap: 4px; position: relative; overflow: hidden; margin-top: 0; min-width: 180px; max-width: 260px; transform: translateY(-7px); }
+.zone-center-panel { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4px 2px; gap: 4px; position: relative; overflow: hidden; margin-top: 0; min-width: 180px; max-width: 260px; transform: translateY(-7px); align-self: flex-start; }
 .zone-tap-hint { font-size: 10px; color: var(--text3); text-align: center; }
 
 #zone-cv { width: 100% !important; max-width: 240px; height: auto !important; aspect-ratio: 190 / 210; }
 
-.pitch-panel { width: 130px; min-width: 110px; flex-shrink: 0; overflow-y: auto; padding: 6px 4px; scrollbar-width: none; display: flex; flex-direction: column; gap: 2px; background: rgba(0,0,0,0.3); border-left: 1px solid var(--border); align-self: flex-start; }
+.pitch-panel { width: 130px; min-width: 110px; flex-shrink: 0; overflow-y: auto; padding: 6px 4px; scrollbar-width: none; display: flex; flex-direction: column; gap: 2px; background: rgba(0,0,0,0.3); align-self: flex-start; align-items: center; }
 .pitch-panel::-webkit-scrollbar { display: none; }
 .pitch-entry-item { display: flex; align-items: center; gap: 3px; padding: 2px 0; }
 .pi-seq { font-size: 9px; color: var(--text3); width: 12px; flex-shrink: 0; }
@@ -590,8 +590,8 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 
     <!-- Center: Strike Zone -->
     <div class="zone-center-panel">
-      <div class="zone-tap-hint" id="zone-hint">Tap zone to begin pitch entry</div>
       <canvas id="zone-cv" width="190" height="210" style="cursor:crosshair;display:block;"></canvas>
+      <div class="zone-tap-hint" id="zone-hint">Tap zone to begin pitch entry</div>
     </div>
 
     <!-- Right panel: pitch list for RHH, silhouette for LHH -->
