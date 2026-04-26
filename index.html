@@ -2563,19 +2563,23 @@ function initRC(context,containerId,opts){
     if(batterSafe){
       const rv=(isError||isD3K)?'error':isWalk?(rt==='hbp'?'hbp':(rt==='ibb'?'ibb':'bb')):isHR?'hr':'hit';
       const bd=isHR?'score':(isWalk||isD3K||isError)?'1b':(isHit?(hitBases===3?'3b':hitBases===2?'2b':'1b'):'1b');
-      RC.entries.push({key:'batter',runner:makeRunner(curB(),rv),startBase:null,dest:bd,fixed:isWalk||isD3K||isError||isHR,advErr:false,earnedOverride:null});
+      RC.entries.push({key:'batter',runner:makeRunner(curB(),rv),startBase:null,dest:bd,fixed:isWalk||isD3K||isError||isHR,advErr:false,earnedOverride:null,autoSet:true});
+      if(isHit){
+        const initLabel={1:'Single',2:'Double',3:'Triple'}[bd==='3b'?3:bd==='2b'?2:1]||'Single';
+        CE.result=(CE.result||'').replace(/\s*·\s*(Single|Double|Triple)/,'')+' · '+initLabel;
+      }
     }
     const sacType=isSac?(bipType==='FLY'?'fly':'bunt'):null;
     const dests=_rcRunnerDests(isHit?hitBases:(isHR?4:0),(isWalk||isD3K||isError),pre,sacType);
     [{key:'b3',base:'3B',runner:pre.b3},{key:'b2',base:'2B',runner:pre.b2},{key:'b1',base:'1B',runner:pre.b1}].forEach(({key,base,runner})=>{
       if(!runner)return;
-      RC.entries.push({key,runner,startBase:base,dest:dests[key]||null,fixed:isHR,advErr:false,earnedOverride:null});
+      RC.entries.push({key,runner,startBase:base,dest:dests[key]||null,fixed:isHR,advErr:false,earnedOverride:null,autoSet:true});
     });
   } else if(context==='fe'){
     if(!G)return;
     [{key:'b3',base:'3B',runner:G.runners.b3},{key:'b2',base:'2B',runner:G.runners.b2},{key:'b1',base:'1B',runner:G.runners.b1}].forEach(({key,base,runner})=>{
       if(!runner)return;
-      RC.entries.push({key,runner,startBase:base,dest:_feMoves[key]||null,fixed:false,advErr:false,earnedOverride:null});
+      RC.entries.push({key,runner,startBase:base,dest:_feMoves[key]||null,fixed:false,advErr:false,earnedOverride:null,autoSet:true});
     });
   }
   renderRunnerCards();
@@ -2678,6 +2682,14 @@ function setRCDest(key,dest){
   e.dest=dest;
   if(key==='batter'&&RC.context==='s3'&&CE.rt==='bip'&&CE.bipOut==='hit'){
     CE.hitBases=dest==='3b'?3:dest==='2b'?2:1;
+    const hitLabel={1:'Single',2:'Double',3:'Triple'}[CE.hitBases];
+    CE.result=(CE.result||'').replace(/\s*·\s*(Single|Double|Triple)/,'')+' · '+hitLabel;
+    const newDests=_rcRunnerDests(CE.hitBases,false,preHitRunners,null);
+    RC.entries.forEach(en=>{
+      if(en.key!=='batter'&&en.autoSet) en.dest=newDests[en.key]||null;
+    });
+  } else if(key!=='batter'){
+    e.autoSet=false;
   }
   renderRunnerCards();
 }
