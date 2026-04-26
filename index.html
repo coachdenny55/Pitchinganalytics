@@ -750,16 +750,6 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
         </div>
       </div>
 
-      <!-- Hit type selector — appears only for hit results -->
-      <div id="hit-type-wrap" class="hidden" style="margin-bottom:14px;">
-        <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Hit Type</div>
-        <div style="display:flex;gap:8px;">
-          <button class="mod-btn" id="ht-single" onclick="pickHitType(1)" style="flex:1;font-size:15px;font-weight:700;">Single</button>
-          <button class="mod-btn" id="ht-double" onclick="pickHitType(2)" style="flex:1;font-size:15px;font-weight:700;">Double</button>
-          <button class="mod-btn" id="ht-triple" onclick="pickHitType(3)" style="flex:1;font-size:15px;font-weight:700;">Triple</button>
-        </div>
-      </div>
-
       <!-- BIP modifiers -->
       <div id="bip-mods" class="hidden">
 
@@ -779,49 +769,11 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 
         <!-- Smart earned/unearned warning -->
         <div id="earned-suggest" style="display:none;padding:8px 12px;background:rgba(240,135,58,0.1);border:1px solid rgba(240,135,58,0.3);border-radius:var(--rsm);margin-bottom:10px;font-size:12px;color:var(--orange);"></div>
-
-        <div class="runs-row">
-          <div class="runs-group">
-            <label>Earned Runs</label>
-            <input type="number" id="mod-er" value="0" min="0" max="9">
-          </div>
-          <div class="runs-group">
-            <label>Unearned Runs</label>
-            <input type="number" id="mod-ur" value="0" min="0" max="9">
-          </div>
-        </div>
       </div>
 
 
-      <!-- Baserunner editor — diamond squares with jersey numbers, appears for all terminal pitches -->
-      <div id="base-editor-wrap" class="hidden">
-        <div style="height:1px;background:var(--border);margin:10px 0 12px;"></div>
-        <div style="margin-bottom:10px;">
-          <button class="mod-btn" id="mod-ro" onclick="toggleRO()" style="width:100%;">+ Runner Out (extra out on bases)</button>
-        </div>
-        <div id="ro-picker" style="display:none;margin-bottom:10px;"></div>
-        <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">Runner positions after play</div>
-        <div style="display:flex;justify-content:center;margin-bottom:6px;">
-          <div style="position:relative;width:180px;height:130px;">
-            <!-- 2B top center -->
-            <div id="be-2b" onclick="toggleBase('2b')"
-              style="position:absolute;width:48px;height:48px;top:0;left:50%;transform:translateX(-50%) rotate(45deg);border:2px solid var(--text3);background:var(--bg3);border-radius:3px;transition:all 0.1s;cursor:pointer;">
-              <span id="be-2b-num" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;transform:rotate(-45deg);font-size:11px;font-weight:700;color:var(--text2);"></span>
-            </div>
-            <!-- 1B right -->
-            <div id="be-1b" onclick="toggleBase('1b')"
-              style="position:absolute;width:48px;height:48px;bottom:0;right:0;transform:rotate(45deg);border:2px solid var(--text3);background:var(--bg3);border-radius:3px;transition:all 0.1s;cursor:pointer;">
-              <span id="be-1b-num" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;transform:rotate(-45deg);font-size:11px;font-weight:700;color:var(--text2);"></span>
-            </div>
-            <!-- 3B left -->
-            <div id="be-3b" onclick="toggleBase('3b')"
-              style="position:absolute;width:48px;height:48px;bottom:0;left:0;transform:rotate(45deg);border:2px solid var(--text3);background:var(--bg3);border-radius:3px;transition:all 0.1s;cursor:pointer;">
-              <span id="be-3b-num" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;transform:rotate(-45deg);font-size:11px;font-weight:700;color:var(--text2);"></span>
-            </div>
-          </div>
-        </div>
-        <p style="font-size:11px;color:var(--text3);text-align:center;margin-bottom:10px;margin-top:8px;">Tap base to add/remove · Yellow = occupied · jersey # shown</p>
-      </div>
+      <!-- Unified runner cards — replaces base editor and hit type selector -->
+      <div id="runner-cards-s3" style="margin-bottom:8px;"></div>
 
       <input type="text" class="note-in" id="mod-note" placeholder="Pitch note (optional)..." style="margin-top:6px;">
 
@@ -839,8 +791,8 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 <div class="overlay" id="fe-ov">
   <div class="overlay-bg" onclick="hideFieldEvent()"></div>
   <div class="fe-sheet">
-    <!-- Bases graphic — always visible -->
-    <div style="margin-bottom:14px;padding:10px 12px;background:var(--bg3);border-radius:var(--rsm);border:1px solid var(--border);">
+    <!-- Bases graphic — current state (hidden in step 2) -->
+    <div id="fe-cur-diamond" style="margin-bottom:14px;padding:10px 12px;background:var(--bg3);border-radius:var(--rsm);border:1px solid var(--border);">
       <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Runners on Base</div>
       <div style="display:flex;justify-content:center;">
         <div style="position:relative;width:130px;height:96px;">
@@ -1975,76 +1927,42 @@ function showEntryStep(s){
   } else if(s===3){
     cb.textContent='Log Pitch ✓'; cb.disabled=false;
     const isBIP=CE.rt==='bip'||CE.rt==='hr';
-    const isHit=CE.bipOut==='hit';
-    const isError=CE.bipOut==='error';
 
-    // spray chart first — all BIP
+    // Spray chart for all BIP
     const spraySection=document.getElementById('spray-section-s3');
     if(spraySection) spraySection.classList.toggle('hidden',!isBIP);
 
-    // hit type selector — only for hits
-    const hitTypeWrap=document.getElementById('hit-type-wrap');
-    if(hitTypeWrap) hitTypeWrap.classList.toggle('hidden',!(isBIP&&isHit));
-
+    // BIP modifier buttons (contact quality, DP, FC, earned-suggest)
     document.getElementById('bip-mods').classList.toggle('hidden',!isBIP);
-    document.getElementById('base-editor-wrap').classList.toggle('hidden',!CE.isTerm);
-
-    // snapshot pre-pitch runners before any mutations
-    if(CE.isTerm){
-      preHitRunners=G&&G.runners?{b1:G.runners.b1,b2:G.runners.b2,b3:G.runners.b3}:{b1:null,b2:null,b3:null};
-    }
-    // preserve hit type for edit flow before the reset clears it
-    const prevHitBases=CE.hitBases||0;
 
     if(isBIP){ sprayModDot=null; drawSprayMod(); }
-    document.getElementById('mod-er').value=0;
-    document.getElementById('mod-ur').value=0;
     document.getElementById('mod-note').value='';
 
-    // reset contact mods
-    CE.hh=false; CE.wc=false; CE.dp=false; CE.fc=false; CE.ro=false; CE.roBase=null; CE.roRunner=null; CE.hitBases=0;
-    ['hh','wc','dp','fc','ro'].forEach(m=>{
-      const el=document.getElementById('mod-'+m);
-      if(el) el.classList.remove('on');
-    });
-    renderROPicker();
-    ['single','double','triple'].forEach(t=>{
-      const el=document.getElementById('ht-'+t);
-      if(el) el.classList.remove('on');
-    });
+    // Preserve hit type before reset (for edit-flow)
+    const prevHitBases=CE.hitBases||0;
 
-    // auto-advance runners and pre-select defaults
+    // Reset contact/play mods
+    CE.hh=false; CE.wc=false; CE.dp=false; CE.fc=false; CE.ro=false; CE.roBase=null; CE.roRunner=null; CE.hitBases=0;
+    ['hh','wc','dp','fc'].forEach(m=>{ const el=document.getElementById('mod-'+m); if(el)el.classList.remove('on'); });
+
+    // Init runner cards for all terminal plays
     if(CE.isTerm){
-      if(CE.rt==='hr'){
-        G.runners={b1:null,b2:null,b3:null};
-        syncBaseEditor(); showEarnedSuggest(); autoFillRuns();
-      } else if(CE.rt==='bb'||CE.rt==='hbp'||CE.rt==='ibb'||CE.rt==='ci'){
-        autoAdvanceForWalk(CE.rt);
-        syncBaseEditor(); showEarnedSuggest(); autoFillRuns();
-      } else if(CE.rt==='bip'&&isHit){
-        // default single; preserves original type when editing a pitch
-        pickHitType(prevHitBases||1);
-      } else if(CE.rt==='bip'&&isError){
-        // auto-place batter on first, force-advance runners up if needed
-        const r=preHitRunners;
-        const batter=makeRunner(curB(),'error');
-        const newR={b1:batter,b2:r.b2,b3:r.b3};
-        if(r.b1){newR.b2=r.b1;if(r.b2)newR.b3=r.b2;}
-        G.runners=newR;
-        syncBaseEditor(); showEarnedSuggest(); autoFillRuns();
-      } else {
-        // SAC bunt, SAC fly, other terminal plays — show current runners, user adjusts
-        syncBaseEditor(); showEarnedSuggest(); autoFillRuns();
-      }
+      initRC('s3','runner-cards-s3',{
+        rt:CE.rt, bipOut:CE.bipOut, bipType:CE.bipType,
+        hitBases:prevHitBases||1, result:CE.result||''
+      });
+    } else {
+      const rcEl=document.getElementById('runner-cards-s3');
+      if(rcEl) rcEl.innerHTML='';
     }
 
-    // scroll arrow
+    showEarnedSuggest();
+
+    // Scroll arrow
     const body=document.getElementById('step3');
     const arrow=document.getElementById('scroll-arrow');
     if(arrow&&body){
-      setTimeout(()=>{
-        arrow.style.opacity=body.scrollHeight>body.clientHeight?'1':'0';
-      },100);
+      setTimeout(()=>{ arrow.style.opacity=body.scrollHeight>body.clientHeight?'1':'0'; },100);
       body.onscroll=()=>{
         const atBottom=body.scrollHeight-body.scrollTop<=body.clientHeight+10;
         if(arrow) arrow.style.opacity=atBottom?'0':'1';
@@ -2334,8 +2252,7 @@ function confirmStep(){
     else{ showEntryStep(3); }
   } else if(eStep===3){
     CE.note=document.getElementById('mod-note').value;
-    CE.er=parseInt(document.getElementById('mod-er').value)||0;
-    CE.ur=parseInt(document.getElementById('mod-ur').value)||0;
+    if(CE.isTerm) applyRCMoves();
     logPitch();
   }
 }
@@ -2624,6 +2541,175 @@ function nextInning(){
 }
 
 // ══════════════════════════════════════════
+// UNIFIED RUNNER CARDS (RC) SYSTEM
+// ══════════════════════════════════════════
+let RC={context:null,containerId:null,entries:[]};
+
+function initRC(context,containerId,opts){
+  opts=opts||{};
+  RC.context=context; RC.containerId=containerId; RC.entries=[];
+  if(context==='s3'){
+    const pre=G?{b1:G.runners.b1,b2:G.runners.b2,b3:G.runners.b3}:{b1:null,b2:null,b3:null};
+    preHitRunners=pre;
+    const rt=opts.rt,bipOut=opts.bipOut,bipType=opts.bipType,hitBases=opts.hitBases||1,result=opts.result||'';
+    const isHit=rt==='bip'&&bipOut==='hit';
+    const isError=rt==='bip'&&bipOut==='error';
+    const isSac=rt==='bip'&&bipOut==='sac';
+    const isWalk=rt==='bb'||rt==='hbp'||rt==='ibb'||rt==='ci';
+    const isD3K=rt==='d3k';
+    const isHR=rt==='hr';
+    const isOtherSafe=rt==='other'&&!result.includes('Out');
+    const batterSafe=isHit||isError||isWalk||isD3K||isHR||isOtherSafe;
+    if(batterSafe){
+      const rv=(isError||isD3K)?'error':isWalk?(rt==='hbp'?'hbp':(rt==='ibb'?'ibb':'bb')):isHR?'hr':'hit';
+      const bd=isHR?'score':(isWalk||isD3K||isError)?'1b':(isHit?(hitBases===3?'3b':hitBases===2?'2b':'1b'):'1b');
+      RC.entries.push({key:'batter',runner:makeRunner(curB(),rv),startBase:null,dest:bd,fixed:isWalk||isD3K||isError||isHR,advErr:false,earnedOverride:null});
+    }
+    const sacType=isSac?(bipType==='FLY'?'fly':'bunt'):null;
+    const dests=_rcRunnerDests(isHit?hitBases:(isHR?4:0),(isWalk||isD3K||isError),pre,sacType);
+    [{key:'b3',base:'3B',runner:pre.b3},{key:'b2',base:'2B',runner:pre.b2},{key:'b1',base:'1B',runner:pre.b1}].forEach(({key,base,runner})=>{
+      if(!runner)return;
+      RC.entries.push({key,runner,startBase:base,dest:dests[key]||null,fixed:isHR,advErr:false,earnedOverride:null});
+    });
+  } else if(context==='fe'){
+    if(!G)return;
+    [{key:'b3',base:'3B',runner:G.runners.b3},{key:'b2',base:'2B',runner:G.runners.b2},{key:'b1',base:'1B',runner:G.runners.b1}].forEach(({key,base,runner})=>{
+      if(!runner)return;
+      RC.entries.push({key,runner,startBase:base,dest:_feMoves[key]||null,fixed:false,advErr:false,earnedOverride:null});
+    });
+  }
+  renderRunnerCards();
+}
+
+function _rcRunnerDests(hitBases,batterToFirst,pre,sacType){
+  const d={};
+  if(hitBases>0){
+    if(pre.b3) d.b3='score';
+    if(pre.b2){const t=2+hitBases; if(t===3)d.b2='3b'; else if(t>=4)d.b2='score';}
+    if(pre.b1){const t=1+hitBases; if(t===2)d.b1='2b'; else if(t===3)d.b1='3b'; else if(t>=4)d.b1='score';}
+  } else if(batterToFirst){
+    if(pre.b1){
+      d.b1='2b';
+      if(pre.b2){d.b2='3b'; if(pre.b3)d.b3='score';}
+    }
+  } else if(sacType==='fly'){
+    if(pre.b3)d.b3='score';
+    if(pre.b2)d.b2='3b';
+    if(pre.b1)d.b1='2b';
+  } else if(sacType==='bunt'){
+    if(pre.b1)d.b1='2b';
+    if(pre.b1&&pre.b2)d.b2='3b';
+  }
+  return d;
+}
+
+function rcGetProjected(){
+  const proj={b1:null,b2:null,b3:null,outs:[],scored:[]};
+  RC.entries.forEach(({key,runner,startBase,dest})=>{
+    const eff=dest!==null?dest:(key!=='batter'&&startBase?(startBase==='3B'?'3b':startBase==='2B'?'2b':'1b'):null);
+    if(!eff)return;
+    if(eff==='out'){proj.outs.push(runner);return;}
+    if(eff==='score'){proj.scored.push(runner);return;}
+    const bk='b'+eff.charAt(0);
+    if(bk in proj)proj[bk]=runner;
+  });
+  return proj;
+}
+
+function renderRunnerCards(){
+  const el=document.getElementById(RC.containerId);
+  if(!el)return;
+  if(!RC.entries.length){
+    el.innerHTML=RC.context==='fe'?'<div style="color:var(--text3);font-size:13px;text-align:center;padding:8px 0;">No runners on base</div>':'';
+    return;
+  }
+  const proj=rcGetProjected();
+  el.innerHTML=_rcDiamondHTML(proj)+RC.entries.map(_rcCardHTML).join('');
+}
+
+function _rcDiamondHTML(proj){
+  const bDiv=(key,xform,extra)=>{
+    const r=proj[key];
+    const num=r?(r.num?'#'+r.num:'?'):'';
+    const on=!!r;
+    return `<div style="position:absolute;${extra||''}width:36px;height:36px;transform:${xform};border:2px solid ${on?'var(--yellow)':'var(--text3)'};background:${on?'var(--yellow)':'var(--bg4)'};border-radius:2px;transition:background 0.15s,border-color 0.15s;display:flex;align-items:center;justify-content:center;"><span style="transform:rotate(-45deg);font-size:${num.length>3?'9px':'11px'};font-weight:700;color:${on?'#000':'var(--text3)'};">${num}</span></div>`;
+  };
+  const col=(label,items,color)=>`<div style="width:50px;flex-shrink:0;text-align:center;"><div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">${label}</div>${items.length?items.map(r=>`<div style="font-size:11px;font-weight:700;color:${color};line-height:1.7;">${r.num?'#'+r.num:'?'}</div>`).join(''):'<div style="font-size:10px;color:var(--text3);">—</div>'}</div>`;
+  return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;padding:10px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--rsm);">${col('Outs',proj.outs,'var(--red)')}<div style="flex:1;display:flex;justify-content:center;align-items:center;"><div style="position:relative;width:110px;height:82px;">${bDiv('b2','translateX(-50%) rotate(45deg)','top:0;left:50%;')}${bDiv('b1','rotate(45deg)','bottom:0;right:0;')}${bDiv('b3','rotate(45deg)','bottom:0;left:0;')}</div></div>${col('Scored',proj.scored,'var(--green)')}</div>`;
+}
+
+function _rcCardHTML(entry){
+  const {key,runner,startBase,dest,fixed,advErr,earnedOverride}=entry;
+  const isBatter=key==='batter';
+  const num=runner.num?'#'+runner.num:(runner.name||'—');
+  const baseLabel=isBatter?'Batter':startBase;
+  const stay=!isBatter?(startBase==='3B'?'3b':startBase==='2B'?'2b':'1b'):null;
+  const effDest=dest!==null?dest:(stay||null);
+  const isScoring=dest==='score'||(fixed&&dest==='score');
+  const autoEarned=isScoring?calcRunEarnedDefault(runner):null;
+  const earned=earnedOverride!==null?earnedOverride:autoEarned;
+  const showWarn=advErr&&isScoring&&earned;
+  const border=dest===null?'var(--border)':(dest==='out'?'var(--red)':dest==='score'?'var(--green)':'var(--accent)');
+  const badgeBg=isBatter?'var(--accent)':'var(--yellow)';
+  const badgeColor=isBatter?'#fff':'#000';
+  const dBtns=[];
+  if(isBatter){
+    dBtns.push({d:'1b',label:'1B'},{d:'2b',label:'2B'},{d:'3b',label:'3B'});
+  } else {
+    dBtns.push({d:stay,label:startBase});
+    if(startBase==='1B'){dBtns.push({d:'2b',label:'2B'},{d:'3b',label:'3B'});}
+    if(startBase==='2B'){dBtns.push({d:'3b',label:'3B'});}
+    dBtns.push({d:'score',label:'Run Scores',color:'var(--green)'});
+    dBtns.push({d:'out',label:'Out',color:'var(--red)'});
+  }
+  const btn=(d,label,color)=>{
+    color=color||'var(--accent)';
+    const active=effDest===d;
+    return `<button onclick="setRCDest('${key}','${d}')" style="flex:1;padding:7px 3px;border-radius:var(--rsm);border:1.5px solid ${active?color:'var(--border2)'};background:${active?color:'var(--bg3)'};color:${active?'#fff':'var(--text2)'};font-size:11px;font-weight:700;cursor:pointer;min-width:0;overflow:hidden;">${label}</button>`;
+  };
+  const fixLbl=dest==='score'?'Run Scores →':dest==='1b'?'→ 1st base':dest==='2b'?'→ 2nd base':dest==='3b'?'→ 3rd base':'—';
+  const earnRow=isScoring?`<div style="display:flex;align-items:center;gap:8px;padding-top:8px;margin-top:6px;border-top:1px solid var(--border);"><div style="font-size:11px;color:${showWarn?'var(--orange)':'var(--text2)'};flex:1;">${showWarn?'⚑ Verify earned/unearned':'Run:'}</div><button onclick="setRCEarned('${key}',true)" style="padding:5px 10px;border-radius:var(--rsm);border:1.5px solid ${earned===true?'var(--green)':'var(--border2)'};background:${earned===true?'var(--green)':'var(--bg3)'};color:${earned===true?'#fff':'var(--text2)'};font-size:11px;font-weight:700;cursor:pointer;">Earned</button><button onclick="setRCEarned('${key}',false)" style="padding:5px 10px;border-radius:var(--rsm);border:1.5px solid ${earned===false?'var(--orange)':'var(--border2)'};background:${earned===false?'var(--orange)':'var(--bg3)'};color:${earned===false?'#fff':'var(--text2)'};font-size:11px;font-weight:700;cursor:pointer;">Unearned</button></div>`:'';
+  return `<div style="background:var(--bg3);border:1px solid ${border};border-radius:var(--rsm);padding:10px 12px;margin-bottom:8px;"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><div style="background:${badgeBg};color:${badgeColor};font-size:10px;font-weight:800;padding:2px 8px;border-radius:3px;flex-shrink:0;">${baseLabel}</div><div style="font-size:13px;font-weight:700;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${num}</div>${!isBatter?`<button onclick="setRCAdvErr('${key}',${!advErr})" style="padding:3px 8px;border-radius:var(--rsm);border:1.5px solid ${advErr?'var(--orange)':'var(--border2)'};background:${advErr?'rgba(240,135,58,0.12)':'var(--bg4)'};color:${advErr?'var(--orange)':'var(--text3)'};font-size:10px;font-weight:700;cursor:pointer;flex-shrink:0;">E-</button>`:''}</div>${fixed?`<div style="font-size:12px;color:var(--text3);padding-bottom:${isScoring?'0':'2px'};">${fixLbl}</div>`:`<div style="display:flex;gap:4px;">${dBtns.map(({d,label,color})=>btn(d,label,color)).join('')}</div>`}${earnRow}</div>`;
+}
+
+function setRCDest(key,dest){
+  const e=RC.entries.find(e=>e.key===key);
+  if(!e||e.fixed)return;
+  e.dest=dest;
+  if(key==='batter'&&RC.context==='s3'&&CE.rt==='bip'&&CE.bipOut==='hit'){
+    CE.hitBases=dest==='3b'?3:dest==='2b'?2:1;
+  }
+  renderRunnerCards();
+}
+function setRCEarned(key,val){const e=RC.entries.find(e=>e.key===key);if(e){e.earnedOverride=val;renderRunnerCards();}}
+function setRCAdvErr(key,val){const e=RC.entries.find(e=>e.key===key);if(e){e.advErr=val;renderRunnerCards();}}
+
+function applyRCMoves(){
+  if(!RC.entries.length)return;
+  const newR={b1:null,b2:null,b3:null};
+  let erRuns=0,urRuns=0;
+  RC.entries.forEach(({key,runner,startBase,dest,earnedOverride})=>{
+    const fd=dest!==null?dest:(key!=='batter'&&startBase?(startBase==='3B'?'3b':startBase==='2B'?'2b':'1b'):null);
+    if(!fd)return;
+    if(fd==='out')return;
+    if(fd==='score'){
+      const e=earnedOverride!==null?earnedOverride:calcRunEarnedDefault(runner);
+      if(RC.context==='s3'){if(e)erRuns++;else urRuns++;}
+      else if(RC.context==='fe'){applyRunScore(runner,e,_feType||'play');}
+      return;
+    }
+    newR['b'+fd.charAt(0)]=runner;
+  });
+  G.runners=newR;
+  if(RC.context==='s3'){
+    CE.er=erRuns; CE.ur=urRuns;
+    const runnerOuts=RC.entries.filter(e=>e.key!=='batter'&&e.dest==='out').length;
+    if(runnerOuts>0&&CE.bipOut!=='out'&&!CE.dp)CE.ro=true;
+    else if(runnerOuts>1&&CE.dp)CE.ro=true;
+  }
+}
+
+// ══════════════════════════════════════════
 // FIELD EVENT
 // ══════════════════════════════════════════
 let _feType=null,_feMoves={},_feEarnedMap={};
@@ -2733,18 +2819,33 @@ function showFEStep2(type){
   document.getElementById('fe-step1').style.display='none';
   document.getElementById('fe-step2').style.display='';
   document.getElementById('fe-s2-title').textContent=type+' — Move Runners';
+  const staticD=document.getElementById('fe-cur-diamond');
+  if(staticD) staticD.style.display='none';
+  // Pre-set smart defaults by play type
+  _feMoves={};
   if(type==='Caught Stealing'||type==='Pickoff'||type==='Runner Out'){
-    if(G.runners.b3) _feMoves['b3']='out';
-    else if(G.runners.b2) _feMoves['b2']='out';
-    else if(G.runners.b1) _feMoves['b1']='out';
+    if(G.runners.b3)_feMoves.b3='out';
+    else if(G.runners.b2)_feMoves.b2='out';
+    else if(G.runners.b1)_feMoves.b1='out';
+  } else if(type==='Stolen Base'){
+    if(G.runners.b3)_feMoves.b3='score';
+    else if(G.runners.b2)_feMoves.b2='3b';
+    else if(G.runners.b1)_feMoves.b1='2b';
+  } else if(type==='Wild Pitch'||type==='Passed Ball'){
+    if(G.runners.b3)_feMoves.b3='score';
+    if(G.runners.b2)_feMoves.b2='3b';
+    if(G.runners.b1)_feMoves.b1='2b';
   }
-  renderFERunnerCards();
+  initRC('fe','fe-runner-cards');
 }
 
 function feBackToStep1(){
   _feMoves={}; _feEarnedMap={}; _feType=null;
   document.getElementById('fe-step1').style.display='';
   document.getElementById('fe-step2').style.display='none';
+  const staticD=document.getElementById('fe-cur-diamond');
+  if(staticD) staticD.style.display='';
+  RC.entries=[];
 }
 
 function renderFERunnerCards(){
@@ -2810,26 +2911,11 @@ function applyRunScore(runner,earned,how){
 
 function confirmFEMoves(){
   if(!G) return;
-  G.events.push({type:_feType,inning:G.inning,half:G.half,moves:JSON.parse(JSON.stringify(_feMoves)),ts:Date.now()});
-  const orig={b1:G.runners.b1,b2:G.runners.b2,b3:G.runners.b3};
-  const newState={b1:null,b2:null,b3:null};
-  let outsAdded=0;
-  const baseOrder=['b1','b2','b3'];
-  ['b3','b2','b1'].forEach(key=>{
-    const runner=orig[key]; if(!runner) return;
-    const move=_feMoves[key];
-    if(!move){ newState[key]=runner; return; }
-    if(move==='out'){ outsAdded++; return; }
-    const scores=feActionScores(key,move);
-    const earned=_feEarnedMap[key]!==undefined?_feEarnedMap[key]:calcRunEarnedDefault(runner);
-    if(move==='score'){ applyRunScore(runner,earned,_feType); return; }
-    const fromIdx=baseOrder.indexOf(key);
-    const steps=move==='adv1'?1:move==='adv2'?2:3;
-    const toIdx=fromIdx+steps;
-    if(toIdx>=3) applyRunScore(runner,earned,_feType);
-    else newState[baseOrder[toIdx]]=runner;
-  });
-  G.runners=newState;
+  const movesLog={};
+  RC.entries.forEach(e=>{if(e.dest)movesLog[e.key]=e.dest;});
+  G.events.push({type:_feType,inning:G.inning,half:G.half,moves:movesLog,ts:Date.now()});
+  applyRCMoves();
+  const outsAdded=RC.entries.filter(e=>e.key!=='batter'&&e.dest==='out').length;
   if(outsAdded>0){
     G.outs+=outsAdded;
     const p=curP(); if(p) p.po+=outsAdded;
