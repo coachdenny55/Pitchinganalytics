@@ -376,6 +376,9 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
       <button type="button" class="btn btn-block" onclick="go('my-team')">My Team</button>
       <button type="button" class="btn btn-block" onclick="doBackup()">Backup Data</button>
     </div>
+    <div class="btn-row" style="margin-top:0;">
+      <button type="button" class="btn btn-block" onclick="showSettings()" style="color:var(--text3);font-size:13px;">⚙ Settings</button>
+    </div>
     <!-- DEV ONLY — remove before release -->
     <div style="display:flex;gap:6px;">
       <button type="button" onclick="devLoadGame()" style="flex:1;padding:8px;background:rgba(255,200,0,0.07);border:1px dashed rgba(255,200,0,0.25);border-radius:var(--rsm);color:rgba(255,200,0,0.4);font-size:12px;cursor:pointer;">⚙ Test Game</button>
@@ -853,9 +856,19 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
   <div class="nav">
     <div class="nav-back" onclick="analyticsBack()">← Back</div>
     <div class="nav-title" id="an-nav-title">Analytics</div>
-    <div class="nav-act" id="an-scope-btn" onclick="toggleAnalyticsScope()">Season</div>
+    <div style="width:60px;"></div>
   </div>
   <div id="an-body" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;"></div>
+</div>
+
+<!-- ══ PITCH VIEW ══ -->
+<div id="screen-pitchview" class="screen">
+  <div class="nav">
+    <div class="nav-back" onclick="pvBack()">← Back</div>
+    <div class="nav-title" id="pv-nav-title" style="font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px;">Pitch View</div>
+    <div style="width:60px;"></div>
+  </div>
+  <div id="pv-body" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;"></div>
 </div>
 
 <!-- ══ MODAL ══ -->
@@ -893,6 +906,7 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 const KEY = 'pitchCharter_v2';
 let S = loadS() || { team:{name:'',level:'hs'}, pitchers:[], games:[], activeId:null, opponents:[] };
 if(!S.opponents) S.opponents=[];
+if(!S.settings) S.settings={sprayZoneOverlay:false};
 let G = null; // active game
 
 function save(){ try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){} }
@@ -956,6 +970,34 @@ function exportGame(id){
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a'); a.href=url;
   a.download='game_'+game.opp+'_'+game.date+'.json'; a.click();
+}
+
+function showSettings(){
+  if(!S.settings) S.settings={sprayZoneOverlay:false};
+  const row=(label,desc,key)=>{
+    const on=!!S.settings[key];
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);">
+      <div>
+        <div style="font-size:14px;font-weight:600;color:var(--text);">${label}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px;">${desc}</div>
+      </div>
+      <button id="stg-${key}" onclick="toggleSetting('${key}')" style="padding:5px 14px;font-size:12px;font-weight:700;border-radius:20px;border:1.5px solid ${on?'var(--accent)':'var(--border2)'};background:${on?'var(--accent)':'none'};color:${on?'#fff':'var(--text2)'};cursor:pointer;flex-shrink:0;margin-left:12px;">${on?'On':'Off'}</button>
+    </div>`;
+  };
+  showModal('Settings',`
+    <div>
+      ${row('Spray Zone Lines','Show infield/outfield zone dividers on spray charts','sprayZoneOverlay')}
+    </div>
+  `);
+}
+function toggleSetting(key){
+  if(!S.settings) S.settings={};
+  S.settings[key]=!S.settings[key];
+  save();
+  const btn=document.getElementById('stg-'+key);
+  const on=S.settings[key];
+  if(btn){ btn.textContent=on?'On':'Off'; btn.style.background=on?'var(--accent)':'none'; btn.style.borderColor=on?'var(--accent)':'var(--border2)'; btn.style.color=on?'#fff':'var(--text2)'; }
+  if(key==='sprayZoneOverlay'&&G) drawSpray();
 }
 
 function deleteGame(id){
@@ -1844,6 +1886,7 @@ function drawSpray(){
   if(!G)return;
   const curBatterName=curB()?.name||'';
   const sb=getFieldBounds(W,H);
+  drawSprayZoneOverlay(ctx,sb);
   G.pitches.filter(p=>p.bName===curBatterName).forEach(p=>{
     if(p.sx==null||p.sy==null)return;
     const x=sb.x+p.sx*sb.w, y=sb.y+p.sy*sb.h;
@@ -1940,7 +1983,7 @@ document.getElementById('spray-mod-cv').addEventListener('click',function(e){
 // ══════════════════════════════════════════
 // ENTRY FLOW
 // ══════════════════════════════════════════
-let CE={pt:null,velo:null,result:null,rt:null,isStrike:false,isTerm:false,bipType:null,bipOut:null,hh:false,wc:false,dp:false,fc:false,ro:false,roBase:null,roRunner:null,sx:null,sy:null,zx:null,zy:null,note:'',er:0,ur:0,hitBases:0};
+let CE={pt:null,velo:null,result:null,rt:null,isStrike:false,isTerm:false,bipType:null,bipOut:null,hh:false,wc:false,dp:false,fc:false,ro:false,roBase:null,roRunner:null,sx:null,sy:null,zx:null,zy:null,note:'',er:0,ur:0,hitBases:0,scoredRunners:[]};
 let eStep=0;
 let preHitRunners=null;
 
@@ -2349,6 +2392,7 @@ function logPitch(){
     hh:CE.hh, wc:CE.wc, dp:CE.dp, fc:CE.fc, ro:CE.ro, hitBases:CE.hitBases,
     sx:CE.sx, sy:CE.sy, zx:CE.zx, zy:CE.zy,
     note:CE.note, er:CE.er, ur:CE.ur,
+    scoredRunners:CE.scoredRunners.slice(),
     ts:Date.now()
   };
   G.pitches.push(pitch);
@@ -2369,7 +2413,7 @@ function logPitch(){
   advanceCount(pitch);
   pendingZX=null; pendingZY=null; zoneConfirmed=false;
   sprayModDot=null;
-  CE={pt:null,velo:null,result:null,rt:null,isStrike:false,isTerm:false,bipType:null,bipOut:null,hh:false,wc:false,dp:false,fc:false,ro:false,sx:null,sy:null,zx:null,zy:null,note:'',er:0,ur:0,hitBases:0};
+  CE={pt:null,velo:null,result:null,rt:null,isStrike:false,isTerm:false,bipType:null,bipOut:null,hh:false,wc:false,dp:false,fc:false,ro:false,sx:null,sy:null,zx:null,zy:null,note:'',er:0,ur:0,hitBases:0,scoredRunners:[]};
   cancelEntry();
   save(); renderGame();
 }
@@ -2571,7 +2615,7 @@ function editPitchFromSummary(pitchId){
   CE.dp=pitch.dp||false; CE.fc=pitch.fc||false; CE.ro=pitch.ro||false;
   CE.sx=pitch.sx; CE.sy=pitch.sy; CE.zx=pitch.zx; CE.zy=pitch.zy;
   CE.note=pitch.note||''; CE.er=pitch.er||0; CE.ur=pitch.ur||0;
-  CE.hitBases=pitch.hitBases||0;
+  CE.hitBases=pitch.hitBases||0; CE.scoredRunners=(pitch.scoredRunners||[]).slice();
   pendingZX=pitch.zx; pendingZY=pitch.zy;
   zoneConfirmed=pitch.zx!=null;
   save(); renderGame();
@@ -2782,7 +2826,10 @@ function applyRCMoves(){
     if(fd==='out')return;
     if(fd==='score'){
       const e=earnedOverride!==null?earnedOverride:calcRunEarnedDefault(runner);
-      if(RC.context==='s3'){if(e)erRuns++;else urRuns++;}
+      if(RC.context==='s3'){
+        if(e)erRuns++;else urRuns++;
+        CE.scoredRunners.push({name:runner.name||'',num:runner.num||'',reachedVia:runner.reachedVia||'other',earned:e});
+      }
       else if(RC.context==='fe'){applyRunScore(runner,e,_feType||'play');}
       return;
     }
@@ -3401,8 +3448,61 @@ function renderABDetailCanvas(abNum){
     ctx.beginPath(); ctx.moveTo(szX+i*(szW/3),szY); ctx.lineTo(szX+i*(szW/3),szY+szH); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(szX,szY+i*(szH/3)); ctx.lineTo(szX+szW,szY+i*(szH/3)); ctx.stroke();
   }
-  const pitches = G.pitches.filter(p=>p.abNum===abNum);
-  pitches.forEach((p,i)=>{ if(p.zx==null)return; drawPitchDot(ctx,p.zx*W,p.zy*H,p,i+1); });
+  // Zone highlight overlay
+  const activeZone=_anFilter&&_anFilter.zone&&_anFilter.zone!=='all'?_anFilter.zone:null;
+  const zcells=activeZone?getZoneCells(activeZone):[];
+  if(zcells.length){
+    ctx.fillStyle='rgba(67,113,203,0.13)';
+    zcells.forEach(({col,row})=>ctx.fillRect(col*cw,row*ch,cw,ch));
+  }
+  const pitches=G.pitches.filter(p=>p.abNum===abNum);
+  pitches.forEach((p,i)=>{
+    if(p.zx==null) return;
+    if(zcells.length){
+      const zn=getZoneNum(p.zx,p.zy);
+      const inZone=AN_ZONE_REGIONS[activeZone]&&AN_ZONE_REGIONS[activeZone].includes(zn);
+      ctx.globalAlpha=inZone?1.0:0.22;
+    }
+    drawPitchDot(ctx,p.zx*W,p.zy*H,p,i+1);
+  });
+  ctx.globalAlpha=1.0;
+  // Dot tap handler
+  cv.onclick=function(e){
+    const rect=cv.getBoundingClientRect();
+    const sx=rect.width/W, sy=rect.height/H;
+    const x=(e.clientX-rect.left)/sx, y=(e.clientY-rect.top)/sy;
+    let closest=null,minDist=Infinity;
+    pitches.forEach((p,i)=>{
+      if(p.zx==null) return;
+      const dx=p.zx*W-x, dy=p.zy*H-y;
+      const d=Math.sqrt(dx*dx+dy*dy);
+      if(d<minDist){minDist=d;closest={p,seq:i+1};}
+    });
+    if(closest&&minDist<22) showPitchDotPopup(closest.p,closest.seq);
+  };
+}
+
+function showPitchDotPopup(p,seq){
+  const ptName=AN_PT_NAMES[p.pt]||p.pt||'—';
+  const count=`${p.ballsBefore}-${p.strikesBefore}`;
+  const zn=(p.zx!=null&&p.zy!=null)?getZoneNum(p.zx,p.zy):null;
+  const znLabel=zn?getZoneLabel(zn):'—';
+  const fzCode=getFieldZone(p.sx,p.sy);
+  const fzLabel=fzCode?FZ_LABEL[fzCode]||fzCode:'—';
+  const RM={k:'Strikeout',kc:'Called K',d3k:'Dropped 3K',bb:'Walk',ibb:'Int. Walk',hbp:'HBP',
+    bip:'In Play',hr:'Home Run',foul:'Foul',ball:'Ball',strike:'Called Strike',swstr:'Swinging Strike'};
+  const result=RM[p.rt]||p.rt||'—';
+  const bipDetail=(p.rt==='bip'&&p.bipType)?` (${p.bipType}${p.bipOut?'/'+p.bipOut[0].toUpperCase():''})${p.hh?' 🔥':''}`:'';
+  showModal(`Pitch ${seq}`,`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 20px;font-size:13px;">
+      <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;margin-bottom:3px;">Type</div><div style="font-weight:700;">${ptName}</div></div>
+      <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;margin-bottom:3px;">Count</div><div style="font-weight:700;">${count}</div></div>
+      <div style="grid-column:1/-1;"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;margin-bottom:3px;">Result</div><div style="font-weight:700;">${result}${bipDetail}</div></div>
+      <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;margin-bottom:3px;">Pitch Zone</div><div style="font-weight:700;">${znLabel}</div></div>
+      <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;margin-bottom:3px;">Field Zone</div><div style="font-weight:700;">${fzLabel}</div></div>
+      ${p.velo?`<div style="grid-column:1/-1;"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;margin-bottom:3px;">Velocity</div><div style="font-weight:700;">${p.velo} mph</div></div>`:''}
+    </div>
+  `);
 }
 let _subSlotIdx=null;
 function showSubBatterForSlot(i){ _subSlotIdx=i; showSubBatter(); }
@@ -3557,8 +3657,8 @@ window.addEventListener('orientationchange',()=>{ setTimeout(()=>{ if(G){ drawZo
 // ══════════════════════════════════════════
 // ANALYTICS MATRIX
 // ══════════════════════════════════════════
-let _anGameId=null,_anFrom='home',_anScope='game',_anMetric='usage',_anDeep=false;
-let _anFilter={hand:'both',sit:'all',loc:'all'};
+let _anGameId=null,_anFrom='home',_anMetric='usage',_anDeep=false;
+let _anFilter={games:[],pitcher:[],hand:'both',sit:'all',trip:'all',loc:'all',zone:'all',bipZone:'all'};
 
 const AN_COUNTS=[
   {b:0,s:0},{b:0,s:1},{b:0,s:2},
@@ -3584,34 +3684,233 @@ const AN_METRICS=[
 ];
 const AN_SIMPLE=['usage','strike','baa','whiff','barrel'];
 
+// ── Field Zone Classification (calibrated from Field.png 1536×1024) ──
+const FZ={
+  hpSx:766/1536, hpSy:838/1024, // normalized home plate position
+  aspect:1536/1024,              // image width/height ratio
+  angLF:-47.15, angRF:47.37,    // foul line angles in degrees (from dead center)
+  ifDist:0.4805,                 // infield-outfield boundary (aspect-corrected normalized)
+};
+const FZ_STEP=(FZ.angRF-FZ.angLF)/5; // ~18.9° per zone
+
+function getFieldZone(sx,sy){
+  if(sx==null||sy==null) return null;
+  const dx=(sx-FZ.hpSx)*FZ.aspect;
+  const dy=FZ.hpSy-sy; // positive = toward outfield
+  const angle=Math.atan2(dx,dy)*180/Math.PI;
+  const dist=Math.sqrt(dx*dx+dy*dy);
+  if(angle<FZ.angLF) return 'foul-l';
+  if(angle>FZ.angRF) return 'foul-r';
+  const dirs=['l','lc','c','rc','r'];
+  const dir=dirs[Math.min(4,Math.floor((angle-FZ.angLF)/FZ_STEP))];
+  return (dist<FZ.ifDist?'if':'of')+'-'+dir;
+}
+const FZ_LABEL={
+  'if-l':'IF-L','if-lc':'IF-LC','if-c':'IF-C','if-rc':'IF-RC','if-r':'IF-R',
+  'of-l':'LF','of-lc':'L-CF','of-c':'CF','of-rc':'R-CF','of-r':'RF',
+  'foul-l':'Foul-L','foul-r':'Foul-R',
+};
+const FZ_REGIONS={
+  if: ['if-l','if-lc','if-c','if-rc','if-r'],
+  of: ['of-l','of-lc','of-c','of-rc','of-r'],
+  l:  ['if-l','of-l','foul-l'],
+  lc: ['if-lc','of-lc'],
+  c:  ['if-c','of-c'],
+  rc: ['if-rc','of-rc'],
+  r:  ['if-r','of-r','foul-r'],
+  foul:['foul-l','foul-r'],
+};
+
+function drawSprayZoneOverlay(ctx,sb){
+  if(!S.settings?.sprayZoneOverlay) return;
+  const hpX=sb.x+FZ.hpSx*sb.w, hpY=sb.y+FZ.hpSy*sb.h;
+  // helper: canvas coords for (angDeg, dist) from hp
+  function fzPoint(angDeg,d){
+    const r=angDeg*Math.PI/180;
+    return [hpX+(d*Math.sin(r)/FZ.aspect)*sb.w, hpY-d*Math.cos(r)*sb.h];
+  }
+  ctx.save();
+  // Zone divider lines (4 interior + 2 foul lines)
+  const divAngles=[FZ.angLF,FZ.angLF+FZ_STEP,FZ.angLF+2*FZ_STEP,FZ.angLF+3*FZ_STEP,FZ.angLF+4*FZ_STEP,FZ.angRF];
+  ctx.strokeStyle='rgba(255,255,255,0.18)'; ctx.lineWidth=1; ctx.setLineDash([4,5]);
+  divAngles.forEach(a=>{
+    const [ex,ey]=fzPoint(a,2.5); // extend well past edge
+    ctx.beginPath(); ctx.moveTo(hpX,hpY); ctx.lineTo(ex,ey); ctx.stroke();
+  });
+  // Infield arc
+  ctx.beginPath(); let first=true;
+  for(let a=FZ.angLF;a<=FZ.angRF+0.5;a+=2){
+    const [x,y]=fzPoint(a,FZ.ifDist);
+    if(first){ctx.moveTo(x,y);first=false;}else ctx.lineTo(x,y);
+  }
+  ctx.stroke(); ctx.setLineDash([]);
+  // Zone labels
+  ctx.fillStyle='rgba(255,255,255,0.32)'; ctx.font='bold 11px -apple-system'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ['L','LC','C','RC','R'].forEach((lbl,i)=>{
+    const centerAng=FZ.angLF+FZ_STEP*(i+0.5);
+    const [x,y]=fzPoint(centerAng,FZ.ifDist*1.5);
+    ctx.fillText(lbl,x,y);
+  });
+  ctx.textAlign='left'; ctx.restore();
+}
+
+// Baseball Savant zone convention — 5×5 grid, 0-indexed col/row
+function getZoneNum(zx,zy){
+  const col=Math.min(4,Math.floor(zx*5));
+  const row=Math.min(4,Math.floor(zy*5));
+  if(row>=1&&row<=3&&col>=1&&col<=3) return (row-1)*3+(col-1)+1; // 1–9
+  const arm=col<=2, top=row<=2;
+  if(top&&arm) return 11;
+  if(top&&!arm) return 12;
+  if(!top&&arm) return 13;
+  return 14;
+}
+const AN_ZONE_REGIONS={
+  up:     [1,2,3,11,12],
+  mid:    [4,5,6],
+  down:   [7,8,9,13,14],
+  in:     [1,4,7,11,13],
+  away:   [3,6,9,12,14],
+  shadow: [11,12,13,14],
+  heart:  [5],
+};
+function getZoneLabel(zn){
+  if(zn===5) return 'Zone 5 — Heart';
+  if(zn>=1&&zn<=9) return `Zone ${zn}`;
+  const m={11:'Shadow — Arm High',12:'Shadow — Glove High',13:'Shadow — Arm Low',14:'Shadow — Glove Low'};
+  return m[zn]||`Zone ${zn}`;
+}
+function getZoneCells(zf){
+  if(!zf||zf==='all') return [];
+  const zones=AN_ZONE_REGIONS[zf]||[];
+  const cells=[];
+  for(let row=0;row<5;row++){
+    for(let col=0;col<5;col++){
+      const sz=(row>=1&&row<=3&&col>=1&&col<=3);
+      const zn=sz?(row-1)*3+(col-1)+1:(col<=2?(row<=2?11:13):(row<=2?12:14));
+      if(zones.includes(zn)) cells.push({col,row});
+    }
+  }
+  return cells;
+}
+
 function showAnalytics(gameId,from='home'){
   _anGameId=gameId; _anFrom=from;
-  _anScope='game'; _anMetric='usage'; _anDeep=false;
-  _anFilter={hand:'both',sit:'all',loc:'all'};
+  _anMetric='usage'; _anDeep=false;
+  _anFilter={games:gameId?[gameId]:[],pitcher:[],hand:'both',sit:'all',trip:'all',loc:'all',zone:'all',bipZone:'all'};
   go('analytics');
 }
 function analyticsBack(){ go(_anFrom); }
-function toggleAnalyticsScope(){ _anScope=_anScope==='game'?'season':'game'; renderAnalytics(); }
 function setAnMetric(id){ _anMetric=id; renderAnalytics(); }
 function setAnFilter(k,v){ _anFilter[k]=v; renderAnalytics(); }
 function toggleAnDeep(){ _anDeep=!_anDeep; renderAnalytics(); }
 
-function _anGetPitches(){
-  if(_anScope==='game'){
-    const g=S.games.find(g=>g.id===_anGameId);
-    return g?(g.pitches||[]).map(p=>({...p,ha:p.ha||g.ha})):[];
+function _anGameLabel(){
+  if(!_anFilter.games.length) return 'All Games';
+  if(_anFilter.games.length===1){
+    const g=S.games.find(x=>x.id===_anFilter.games[0]);
+    if(!g) return '1 Game';
+    return (g.ha==='home'?'vs. ':'@ ')+g.opp;
   }
-  return S.games.flatMap(g=>(g.pitches||[]).map(p=>({...p,ha:p.ha||g.ha})));
+  return _anFilter.games.length+' Games';
+}
+function _anPitcherLabel(){
+  if(!_anFilter.pitcher.length) return 'All';
+  if(_anFilter.pitcher.length===1) return _anFilter.pitcher[0].split(' ').pop();
+  return _anFilter.pitcher.length+' Pitchers';
+}
+
+function _anGamePickerBody(){
+  const allSel=!_anFilter.games.length;
+  const row=(id,main,sub,checked)=>`<div onclick="toggleAnGame('${id}')" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;-webkit-tap-highlight-color:transparent;">
+    <div><div style="font-size:14px;font-weight:600;color:var(--text);">${main}</div>${sub?`<div style="font-size:11px;color:var(--text3);margin-top:2px;">${sub}</div>`:''}</div>
+    <span style="font-size:18px;color:var(--accent);width:20px;text-align:right;">${checked?'✓':''}</span>
+  </div>`;
+  const sorted=[...S.games].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  return row('all','All Games','',allSel)
+    +sorted.map(g=>{
+      const ha=g.ha==='home'?'vs.':'@';
+      const w=g.ourScore!=null&&g.ourScore>g.oppScore, l=g.ourScore!=null&&g.ourScore<g.oppScore;
+      const score=g.ourScore!=null?`<span style="color:${w?'var(--green)':l?'#e55':'var(--text3)'}">${w?'W':l?'L':'T'} ${g.ourScore}–${g.oppScore}</span>`:'';
+      const sub=[g.date||'',score].filter(Boolean).join(' · ');
+      return row(g.id,`${ha} ${g.opp||'Unknown'}`,sub,_anFilter.games.includes(g.id));
+    }).join('');
+}
+function _anPitcherPickerBody(){
+  const appIdName={};
+  S.games.forEach(g=>(g.pitchers||[]).forEach(gp=>{appIdName[gp.appId]=gp.name;}));
+  const names=[...new Set(_anGetPitches().map(p=>appIdName[p.appId]).filter(Boolean))];
+  const allSel=!_anFilter.pitcher.length;
+  const row=(id,label,checked)=>`<div onclick="toggleAnPitcher('${id.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;-webkit-tap-highlight-color:transparent;">
+    <div style="font-size:14px;font-weight:600;color:var(--text);">${label}</div>
+    <span style="font-size:18px;color:var(--accent);width:20px;text-align:right;">${checked?'✓':''}</span>
+  </div>`;
+  return row('all','All Pitchers',allSel)+names.map(n=>row(n,n,_anFilter.pitcher.includes(n))).join('');
+}
+function showAnGamePicker(){
+  showModal('Select Games',_anGamePickerBody());
+}
+function showAnPitcherPicker(){
+  showModal('Select Pitcher',_anPitcherPickerBody());
+}
+function toggleAnGame(id){
+  if(id==='all'){ _anFilter.games=[]; }
+  else if(!_anFilter.games.length){ _anFilter.games=[id]; }
+  else{
+    const i=_anFilter.games.indexOf(id);
+    if(i>=0) _anFilter.games.splice(i,1); else _anFilter.games.push(id);
+  }
+  document.getElementById('modal-body').innerHTML=_anGamePickerBody();
+  renderAnalytics();
+}
+function toggleAnPitcher(name){
+  if(name==='all'){ _anFilter.pitcher=[]; }
+  else if(!_anFilter.pitcher.length){ _anFilter.pitcher=[name]; }
+  else{
+    const i=_anFilter.pitcher.indexOf(name);
+    if(i>=0) _anFilter.pitcher.splice(i,1); else _anFilter.pitcher.push(name);
+  }
+  document.getElementById('modal-body').innerHTML=_anPitcherPickerBody();
+  renderAnalytics();
+}
+
+function _anGetPitches(){
+  const src=_anFilter.games.length
+    ? S.games.filter(g=>_anFilter.games.includes(g.id))
+    : S.games;
+  return src.flatMap(g=>{
+    const ll=g.lineup?.length||9;
+    return (g.pitches||[]).map(p=>({...p,ha:p.ha||g.ha,_lineupLen:ll}));
+  });
+}
+function _anTripNum(p){
+  const len=p._lineupLen||9;
+  const t=Math.ceil(p.abNum/len);
+  return Math.min(t,5);
 }
 
 function _anFilterPitches(pitches){
+  const _appIdName={};
+  if(_anFilter.pitcher.length) S.games.forEach(g=>(g.pitchers||[]).forEach(gp=>{_appIdName[gp.appId]=gp.name;}));
   return pitches.filter(p=>{
+    if(_anFilter.pitcher.length&&!_anFilter.pitcher.includes(_appIdName[p.appId])) return false;
     if(_anFilter.hand==='L'&&p.bHand!=='L') return false;
     if(_anFilter.hand==='R'&&p.bHand!=='R') return false;
     if(_anFilter.sit==='risp'&&!p.runners?.b2&&!p.runners?.b3) return false;
     if(_anFilter.sit==='2out'&&p.outsBefore!==2) return false;
+    if(_anFilter.trip!=='all'&&_anTripNum(p)!==parseInt(_anFilter.trip)) return false;
     if(_anFilter.loc==='home'&&p.ha!=='home') return false;
     if(_anFilter.loc==='away'&&p.ha!=='away') return false;
+    if(_anFilter.zone&&_anFilter.zone!=='all'){
+      if(p.zx==null||p.zy==null) return false;
+      const zn=getZoneNum(p.zx,p.zy);
+      if(!AN_ZONE_REGIONS[_anFilter.zone]||!AN_ZONE_REGIONS[_anFilter.zone].includes(zn)) return false;
+    }
+    if(_anFilter.bipZone&&_anFilter.bipZone!=='all'){
+      if(p.sx==null||p.sy==null) return false;
+      const fz=getFieldZone(p.sx,p.sy);
+      if(!FZ_REGIONS[_anFilter.bipZone]?.includes(fz)) return false;
+    }
     return true;
   });
 }
@@ -3750,11 +4049,8 @@ function _anColor(val,mid){
 }
 
 function renderAnalytics(){
-  const game=S.games.find(g=>g.id===_anGameId);
   const navEl=document.getElementById('an-nav-title');
-  const scopeEl=document.getElementById('an-scope-btn');
-  if(navEl) navEl.textContent=_anScope==='game'?(game?`vs. ${game.opp}`:'Analytics'):'Season';
-  if(scopeEl) scopeEl.textContent=_anScope==='game'?'Season':'This Game';
+  if(navEl) navEl.textContent='Analytics';
 
   const raw=_anGetPitches();
   const pitches=_anFilterPitches(raw);
@@ -3764,16 +4060,31 @@ function renderAnalytics(){
   const shownMetrics=_anDeep?AN_METRICS:AN_METRICS.filter(m=>AN_SIMPLE.includes(m.id));
   const activeMeta=AN_METRICS.find(m=>m.id===_anMetric)||AN_METRICS[0];
 
-  const filtersHTML=`<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px;">
-    <div style="display:flex;gap:3px;background:var(--bg3);border-radius:var(--rsm);padding:3px;">
-      ${['both','L','R'].map(h=>`<button onclick="setAnFilter('hand','${h}')" style="padding:4px 9px;font-size:11px;font-weight:700;background:${_anFilter.hand===h?'var(--accent)':'none'};color:${_anFilter.hand===h?'#fff':'var(--text2)'};border:none;border-radius:4px;cursor:pointer;">${h==='both'?'Both':h+'HH'}</button>`).join('')}
+  const _btn=(label,onclick,active)=>`<button onclick="${onclick}" style="padding:4px 9px;font-size:11px;font-weight:700;background:${active?'var(--accent)':'none'};color:${active?'#fff':'var(--text2)'};border:none;border-radius:4px;cursor:pointer;">${label}</button>`;
+  const _grp=(label,extra='')=>(btns)=>`<div style="display:flex;gap:3px;background:var(--bg3);border-radius:var(--rsm);padding:3px;align-items:center;">${label?`<span style="font-size:10px;font-weight:700;color:var(--text3);padding:0 4px 0 2px;">${label}</span>`:''}${extra}${btns}</div>`;
+
+  const filtersHTML=`<div style="margin-bottom:14px;">
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
+      <button onclick="showAnGamePicker()" style="flex:1;min-width:0;padding:9px 12px;background:var(--bg3);border:1.5px solid ${_anFilter.games.length?'var(--accent)':'var(--border2)'};border-radius:var(--rsm);font-size:12px;font-weight:700;color:var(--text);cursor:pointer;display:flex;align-items:center;gap:6px;">
+        <span style="font-size:10px;font-weight:700;color:var(--text3);flex-shrink:0;">Game</span>
+        <span style="flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_anGameLabel()}</span>
+        <span style="color:var(--text3);font-size:10px;flex-shrink:0;">▾</span>
+      </button>
+      <button onclick="showAnPitcherPicker()" style="flex:1;min-width:0;padding:9px 12px;background:var(--bg3);border:1.5px solid ${_anFilter.pitcher.length?'var(--accent)':'var(--border2)'};border-radius:var(--rsm);font-size:12px;font-weight:700;color:var(--text);cursor:pointer;display:flex;align-items:center;gap:6px;">
+        <span style="font-size:10px;font-weight:700;color:var(--text3);flex-shrink:0;">P</span>
+        <span style="flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_anPitcherLabel()}</span>
+        <span style="color:var(--text3);font-size:10px;flex-shrink:0;">▾</span>
+      </button>
     </div>
-    <div style="display:flex;gap:3px;background:var(--bg3);border-radius:var(--rsm);padding:3px;">
-      ${[['all','All'],['risp','RISP'],['2out','2-Out']].map(([v,l])=>`<button onclick="setAnFilter('sit','${v}')" style="padding:4px 9px;font-size:11px;font-weight:700;background:${_anFilter.sit===v?'var(--accent)':'none'};color:${_anFilter.sit===v?'#fff':'var(--text2)'};border:none;border-radius:4px;cursor:pointer;">${l}</button>`).join('')}
+    <div style="display:flex;gap:7px;flex-wrap:wrap;">
+      ${_grp('H')([['both','Both'],['L','LHH'],['R','RHH']].map(([v,l])=>_btn(l,`setAnFilter('hand','${v}')`,_anFilter.hand===v)).join(''))}
+      ${_grp('Sit')([['all','All'],['risp','RISP'],['2out','2-Out']].map(([v,l])=>_btn(l,`setAnFilter('sit','${v}')`,_anFilter.sit===v)).join(''))}
+      ${_grp('Trip')([['all','All'],['1','1st'],['2','2nd'],['3','3rd'],['4','4th'],['5','5th']].map(([v,l])=>_btn(l,`setAnFilter('trip','${v}')`,_anFilter.trip===v)).join(''))}
+      ${_grp('@')([['all','All'],['home','Home'],['away','Away']].map(([v,l])=>_btn(l,`setAnFilter('loc','${v}')`,_anFilter.loc===v)).join(''))}
+      ${_grp('Zone','<button onclick="showZoneKey()" style="padding:2px 6px;font-size:11px;font-weight:700;background:none;color:var(--text3);border:1px solid var(--border2);border-radius:4px;cursor:pointer;">?</button>')([['all','All'],['up','Up'],['mid','Mid'],['down','Dn'],['in','In'],['away','Away'],['shadow','Shad'],['heart','♥']].map(([v,l])=>_btn(l,`setAnFilter('zone','${v}')`,_anFilter.zone===v)).join(''))}
+      ${_grp('Field')([['all','All'],['if','IF'],['of','OF'],['l','L'],['lc','LC'],['c','C'],['rc','RC'],['r','R'],['foul','Foul']].map(([v,l])=>_btn(l,`setAnFilter('bipZone','${v}')`,_anFilter.bipZone===v)).join(''))}
     </div>
-    <div style="display:flex;gap:3px;background:var(--bg3);border-radius:var(--rsm);padding:3px;">
-      ${[['all','All'],['home','Home'],['away','Away']].map(([v,l])=>`<button onclick="setAnFilter('loc','${v}')" style="padding:4px 9px;font-size:11px;font-weight:700;background:${_anFilter.loc===v?'var(--accent)':'none'};color:${_anFilter.loc===v?'#fff':'var(--text2)'};border:none;border-radius:4px;cursor:pointer;">${l}</button>`).join('')}
-    </div>
+    ${_anFilter.bipZone!=='all'?'<div style="font-size:10px;color:var(--accent);margin-top:6px;">Field filter active — BIP with spray location only</div>':''}
   </div>`;
 
   const chipsHTML=`<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px;align-items:center;">
@@ -3788,24 +4099,22 @@ function renderAnalytics(){
   }
 
   const CW=46,LW=46;
-  const hdrCells=AN_COUNTS.map(({b,s})=>`<div style="width:${CW}px;flex-shrink:0;text-align:center;font-size:10px;font-weight:700;color:var(--text2);padding:5px 2px;">${b}-${s}</div>`).join('');
+  const hdrCells=AN_COUNTS.map(({b,s})=>`<div style="width:${CW}px;flex-shrink:0;text-align:center;font-size:10px;font-weight:700;color:var(--text2);padding:5px 2px;margin:1px;">${b}-${s}</div>`).join('');
 
   const dataRows=ptPresent.map(pt=>{
     const ptTotal=Object.values(cells).filter(c=>c.pt===pt).reduce((a,c)=>a+c.n,0);
     const ptPct=pitches.length?Math.round(ptTotal/pitches.length*100):0;
     const rowCells=AN_COUNTS.map(({b,s})=>{
       const c=cells[`${pt}_${b}_${s}`];
-      if(!c||c.n===0) return `<div style="width:${CW}px;flex-shrink:0;height:38px;"></div>`;
-      const gray=c.n<5;
+      if(!c||c.n===0) return `<div style="width:${CW}px;flex-shrink:0;height:38px;margin:1px;"></div>`;
       const val=_anVal(c,_anMetric);
-      const disp=gray?`n=${c.n}`:_anFmt(val,_anMetric);
-      const col=gray?'color:var(--text3)':_anColor(val,_anMetric);
-      const bg=gray?'background:rgba(255,255,255,0.03)':'background:var(--bg3)';
-      return `<div onclick="showAnCell('${pt}',${b},${s})" style="width:${CW}px;flex-shrink:0;height:38px;${bg};border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:${gray?9:12}px;font-weight:700;cursor:pointer;${col};margin:1px;">${disp}</div>`;
+      const disp=_anFmt(val,_anMetric);
+      const col=_anColor(val,_anMetric);
+      return `<div onclick="showAnCell('${pt}',${b},${s})" style="width:${CW}px;flex-shrink:0;height:38px;background:var(--bg3);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;cursor:pointer;${col};margin:1px;">${disp}</div>`;
     }).join('');
     return `<div style="display:flex;align-items:center;margin-bottom:2px;">
       <div style="width:${LW}px;flex-shrink:0;padding-right:6px;">
-        <div style="font-size:12px;font-weight:800;color:var(--text);">${pt}</div>
+        <div style="font-size:12px;font-weight:800;color:#000;">${pt}</div>
         <div style="font-size:10px;color:var(--text3);">${ptPct}%</div>
       </div>
       <div style="display:flex;">${rowCells}</div>
@@ -3814,7 +4123,7 @@ function renderAnalytics(){
 
   document.getElementById('an-body').innerHTML=`<div style="padding:16px;">
     ${filtersHTML}${chipsHTML}
-    <div style="font-size:10px;color:var(--text3);margin-bottom:8px;">Gray = n&lt;5 · Tap any cell for full breakdown</div>
+    <div style="font-size:10px;color:var(--text3);margin-bottom:8px;">Tap any cell for full breakdown</div>
     <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
       <div style="min-width:${LW+AN_COUNTS.length*CW+12}px;">
         <div style="display:flex;align-items:center;margin-bottom:2px;">
@@ -3825,6 +4134,7 @@ function renderAnalytics(){
       </div>
     </div>
     <div style="margin-top:14px;font-size:11px;color:var(--text3);text-align:center;">${pitches.length} pitches · ${ptPresent.length} pitch types</div>
+    <button onclick="showBrowsePitches()" style="margin-top:12px;width:100%;padding:11px;background:var(--bg3);border:1.5px solid var(--border2);color:var(--text2);font-weight:700;font-size:13px;border-radius:var(--rsm);cursor:pointer;">Browse Pitches →</button>
   </div>`;
 }
 
@@ -3866,11 +4176,377 @@ function showAnCell(pt,b,s){
 
   const nWarn=c.n<5?`<div style="font-size:11px;color:var(--red);background:rgba(232,85,85,0.1);border-radius:var(--rsm);padding:7px 10px;margin-bottom:12px;">Small sample — n=${c.n}</div>`:'';
 
+  // Runs Scored section (Piece 4)
+  const cellPitches=pitches.filter(p=>p.pt===pt&&p.ballsBefore===b&&p.strikesBefore===s);
+  const erTotal=cellPitches.reduce((a,p)=>a+(p.er||0),0);
+  const urTotal=cellPitches.reduce((a,p)=>a+(p.ur||0),0);
+  let runsSection='';
+  if(erTotal>0||urTotal>0){
+    const hasSR=cellPitches.some(p=>p.scoredRunners?.length);
+    let rvRows='';
+    if(hasSR){
+      const rv={hit:0,bb:0,ibb:0,hbp:0,error:0,other:0};
+      cellPitches.forEach(p=>(p.scoredRunners||[]).forEach(r=>{
+        const k=r.reachedVia||'other';
+        if(rv.hasOwnProperty(k))rv[k]++;else rv.other++;
+      }));
+      const bbTotal=rv.bb+rv.ibb;
+      [['Hit',rv.hit],['Walk / IBB',bbTotal],['HBP',rv.hbp],['Error / PB',rv.error+rv.other]].filter(([,n])=>n>0)
+        .forEach(([l,n])=>{rvRows+=`<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px solid var(--border);"><div style="color:var(--text2);">Via ${l}</div><div style="font-weight:700;">${n}</div></div>`;});
+    } else {
+      rvRows=`<div style="font-size:11px;color:var(--text3);margin-top:4px;">Detail available on newer records</div>`;
+    }
+    runsSection=`<div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin:14px 0 6px;">Runs Scored — How Runners Reached</div>
+      <div style="display:flex;gap:16px;font-size:13px;margin-bottom:8px;">
+        <div><span style="color:var(--text3);">ER:</span> <span style="font-weight:700;">${erTotal}</span></div>
+        <div><span style="color:var(--text3);">UR:</span> <span style="font-weight:700;">${urTotal}</span></div>
+      </div>${rvRows}`;
+  }
+
   showModal(`<span style="font-size:13px;">${ptName} · ${b}-${s}</span>`,`
     <div style="font-size:12px;color:var(--text2);margin-bottom:10px;">n = ${c.n} pitches</div>
     ${nWarn}
     ${metricRows}
     ${(bipRows||hrRow)?`<div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin:14px 0 6px;">BIP Breakdown</div>${bipRows}${hrRow}`:''}
+    ${runsSection}
+    <button onclick="showPitchView('${pt}',${b},${s})" style="margin-top:16px;width:100%;padding:11px;background:var(--accent);color:#fff;font-weight:700;font-size:14px;border:none;border-radius:var(--rsm);cursor:pointer;">View Pitches →</button>
+  `);
+}
+
+function showZoneKey(){
+  // 5×5 SVG zone diagram. Each cell = 36px. Shadow cells slightly smaller visually.
+  const CZ=36, SZ_COL='rgba(255,255,255,0.12)', SZ_STROKE='rgba(255,255,255,0.35)', SH_COL='rgba(255,255,255,0.05)';
+  const W=5*CZ, H=5*CZ;
+  function cellFill(col,row){return (row>=1&&row<=3&&col>=1&&col<=3)?SZ_COL:SH_COL;}
+  function cellLabel(col,row){
+    if(row>=1&&row<=3&&col>=1&&col<=3) return (row-1)*3+(col-1)+1;
+    const arm=col<=2,top=row<=2;
+    return top?(arm?11:12):(arm?13:14);
+  }
+  let cells='';
+  for(let row=0;row<5;row++){
+    for(let col=0;col<5;col++){
+      const x=col*CZ,y=row*CZ;
+      const lbl=cellLabel(col,row);
+      const inSZ=row>=1&&row<=3&&col>=1&&col<=3;
+      const isHeart=lbl===5;
+      cells+=`<rect x="${x+1}" y="${y+1}" width="${CZ-2}" height="${CZ-2}" rx="3" fill="${isHeart?'rgba(67,113,203,0.25)':cellFill(col,row)}" stroke="${inSZ?SZ_STROKE:'rgba(255,255,255,0.12)'}" stroke-width="${inSZ?1.5:1}"/>`;
+      cells+=`<text x="${x+CZ/2}" y="${y+CZ/2+4}" text-anchor="middle" font-size="11" font-weight="${inSZ?700:500}" fill="${inSZ?'rgba(255,255,255,0.85)':'rgba(255,255,255,0.4)'}">${lbl}</text>`;
+    }
+  }
+  // home plate pentagon at bottom center
+  const px=W/2,py=H+18;
+  const plate=`<polygon points="${px-12},${py-8} ${px+12},${py-8} ${px+12},${py} ${px},${py+8} ${px-12},${py}" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="1.5"/>`;
+  const legend=[
+    ['1–9','Strike Zone'],['5','Heart (center)'],['11–12','Shadow (high)'],['13–14','Shadow (low)'],
+  ].map(([z,desc],i)=>`<div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2);margin:4px 0;">
+    <div style="width:30px;text-align:center;font-weight:700;color:var(--text);">${z}</div>
+    <div>${desc}</div>
+  </div>`).join('');
+  showModal('Zone Map',`
+    <div style="text-align:center;margin-bottom:8px;">
+      <svg width="${W}" height="${H+30}" viewBox="0 0 ${W} ${H+30}" style="display:inline-block;">
+        ${cells}${plate}
+        <text x="${W/2}" y="${H+28}" text-anchor="middle" font-size="9" fill="rgba(255,255,255,0.35)">Catcher's view</text>
+      </svg>
+    </div>
+    <div style="margin-top:8px;">${legend}</div>
+    <div style="margin-top:10px;font-size:11px;color:var(--text3);">Zones follow Baseball Savant convention. "In/Away" based on catcher's perspective — flip mentally for LHB.</div>
+  `);
+}
+
+// ══════════════════════════════════════════
+// PITCH VIEW (Pieces 1 + 2)
+// ══════════════════════════════════════════
+let _pvCellMode=false;
+let _pvPT='all', _pvB='all', _pvS='all', _pvCountKey='all';
+let _pvFilter={result:'all',hand:'both',sit:'all',trip:'all',inning:'all',zone:'all',bipZone:'all'};
+
+function showPitchView(pt,b,s){
+  hideModal();
+  _pvCellMode=true;
+  _pvPT=pt; _pvB=b; _pvS=s; _pvCountKey=`${b}-${s}`;
+  _pvFilter={result:'all',hand:'both',sit:'all',trip:'all',inning:'all',zone:'all',bipZone:'all'};
+  go('pitchview');
+  requestAnimationFrame(renderPitchView);
+}
+function showBrowsePitches(){
+  _pvCellMode=false;
+  _pvPT='all'; _pvB='all'; _pvS='all'; _pvCountKey='all';
+  _pvFilter={result:'all',hand:'both',sit:'all',trip:'all',inning:'all',zone:'all',bipZone:'all'};
+  go('pitchview');
+  requestAnimationFrame(renderPitchView);
+}
+function pvBack(){ go('analytics'); }
+function setPVFilter(k,v){ _pvFilter[k]=v; renderPitchView(); }
+function setPVType(pt){ _pvPT=pt; renderPitchView(); }
+function setPVCount(v){
+  _pvCountKey=v;
+  if(v==='all'){_pvB='all';_pvS='all';}
+  else{const p=v.split('-');_pvB=Number(p[0]);_pvS=Number(p[1]);}
+  renderPitchView();
+}
+
+function _pvGetPitches(){
+  let pitches=_anGetPitches();
+  // Apply main _anFilter (except zone/bipZone which are local to _pvFilter)
+  const _pv_appIdName={};
+  if(_anFilter.pitcher.length) S.games.forEach(g=>(g.pitchers||[]).forEach(gp=>{_pv_appIdName[gp.appId]=gp.name;}));
+  pitches=pitches.filter(p=>{
+    if(_anFilter.pitcher.length&&!_anFilter.pitcher.includes(_pv_appIdName[p.appId])) return false;
+    if(_anFilter.hand==='L'&&p.bHand!=='L') return false;
+    if(_anFilter.hand==='R'&&p.bHand!=='R') return false;
+    if(_anFilter.sit==='risp'&&!p.runners?.b2&&!p.runners?.b3) return false;
+    if(_anFilter.sit==='2out'&&p.outsBefore!==2) return false;
+    if(_anFilter.trip!=='all'&&_anTripNum(p)!==parseInt(_anFilter.trip)) return false;
+    if(_anFilter.loc==='home'&&p.ha!=='home') return false;
+    if(_anFilter.loc==='away'&&p.ha!=='away') return false;
+    return true;
+  });
+  if(_pvPT&&_pvPT!=='all') pitches=pitches.filter(p=>p.pt===_pvPT);
+  if(_pvB!=='all') pitches=pitches.filter(p=>p.ballsBefore===Number(_pvB));
+  if(_pvS!=='all') pitches=pitches.filter(p=>p.strikesBefore===Number(_pvS));
+  return _pvApplyFilter(pitches);
+}
+
+function _pvApplyFilter(pitches){
+  return pitches.filter(p=>{
+    const r=_pvFilter.result;
+    if(r==='hits'&&!(p.bipOut==='hit'||p.rt==='hr')) return false;
+    if(r==='outs'&&!(p.bipOut==='out'||p.bipOut==='sac')) return false;
+    if(r==='ks'&&!(p.rt==='k'||p.rt==='kc'||p.rt==='d3k')) return false;
+    if(r==='walks'&&!(p.rt==='bb'||p.rt==='ibb')) return false;
+    if(r==='barrels'&&!(p.hh&&(p.bipType==='LD'||p.bipType==='FLY'))) return false;
+    if(_pvFilter.hand==='L'&&p.bHand!=='L') return false;
+    if(_pvFilter.hand==='R'&&p.bHand!=='R') return false;
+    const sit=_pvFilter.sit;
+    if(sit==='risp'&&!p.runners?.b2&&!p.runners?.b3) return false;
+    if(sit==='2out'&&p.outsBefore!==2) return false;
+    if(_pvFilter.trip!=='all'&&_anTripNum(p)!==parseInt(_pvFilter.trip)) return false;
+    const inn=_pvFilter.inning;
+    if(inn==='early'&&(p.inning||1)>3) return false;
+    if(inn==='mid'&&!((p.inning||1)>=4&&(p.inning||1)<=6)) return false;
+    if(inn==='late'&&(p.inning||1)<7) return false;
+    if(_pvFilter.zone&&_pvFilter.zone!=='all'){
+      if(p.zx==null||p.zy==null) return false;
+      if(!AN_ZONE_REGIONS[_pvFilter.zone]?.includes(getZoneNum(p.zx,p.zy))) return false;
+    }
+    if(_pvFilter.bipZone&&_pvFilter.bipZone!=='all'){
+      if(p.sx==null||p.sy==null) return false;
+      if(!FZ_REGIONS[_pvFilter.bipZone]?.includes(getFieldZone(p.sx,p.sy))) return false;
+    }
+    return true;
+  });
+}
+
+function _pvChips(){
+  const b=(label,onclick,active)=>`<button onclick="${onclick}" style="padding:4px 9px;font-size:11px;font-weight:700;background:${active?'var(--accent)':'none'};color:${active?'#fff':'var(--text2)'};border:none;border-radius:4px;cursor:pointer;white-space:nowrap;">${label}</button>`;
+  const g=(lbl,...btns)=>`<div style="display:flex;gap:3px;background:var(--bg3);border-radius:var(--rsm);padding:3px;align-items:center;flex-wrap:wrap;">${lbl?`<span style="font-size:10px;font-weight:700;color:var(--text3);padding:0 4px 0 2px;">${lbl}</span>`:''}${btns.join('')}</div>`;
+  return `<div style="display:flex;gap:6px;flex-wrap:wrap;padding:10px 12px 0;">
+    ${g('',b('All',"setPVFilter('result','all')",_pvFilter.result==='all'),b('Hits',"setPVFilter('result','hits')",_pvFilter.result==='hits'),b('Outs',"setPVFilter('result','outs')",_pvFilter.result==='outs'),b('Ks',"setPVFilter('result','ks')",_pvFilter.result==='ks'),b('Walks',"setPVFilter('result','walks')",_pvFilter.result==='walks'),b('Barrels',"setPVFilter('result','barrels')",_pvFilter.result==='barrels'))}
+    ${g('H',b('Both',"setPVFilter('hand','both')",_pvFilter.hand==='both'),b('LHH',"setPVFilter('hand','L')",_pvFilter.hand==='L'),b('RHH',"setPVFilter('hand','R')",_pvFilter.hand==='R'))}
+    ${g('Sit',b('All',"setPVFilter('sit','all')",_pvFilter.sit==='all'),b('RISP',"setPVFilter('sit','risp')",_pvFilter.sit==='risp'),b('2-Out',"setPVFilter('sit','2out')",_pvFilter.sit==='2out'))}
+    ${g('Trip',b('All',"setPVFilter('trip','all')",_pvFilter.trip==='all'),b('1st',"setPVFilter('trip','1')",_pvFilter.trip==='1'),b('2nd',"setPVFilter('trip','2')",_pvFilter.trip==='2'),b('3rd',"setPVFilter('trip','3')",_pvFilter.trip==='3'),b('4th',"setPVFilter('trip','4')",_pvFilter.trip==='4'),b('5th',"setPVFilter('trip','5')",_pvFilter.trip==='5'))}
+    ${g('Inn',b('All',"setPVFilter('inning','all')",_pvFilter.inning==='all'),b('Early',"setPVFilter('inning','early')",_pvFilter.inning==='early'),b('Mid',"setPVFilter('inning','mid')",_pvFilter.inning==='mid'),b('Late',"setPVFilter('inning','late')",_pvFilter.inning==='late'))}
+    ${g('Zone',b('All',"setPVFilter('zone','all')",_pvFilter.zone==='all'),b('Up',"setPVFilter('zone','up')",_pvFilter.zone==='up'),b('Mid',"setPVFilter('zone','mid')",_pvFilter.zone==='mid'),b('Dn',"setPVFilter('zone','down')",_pvFilter.zone==='down'),b('In',"setPVFilter('zone','in')",_pvFilter.zone==='in'),b('Away',"setPVFilter('zone','away')",_pvFilter.zone==='away'),b('Shad',"setPVFilter('zone','shadow')",_pvFilter.zone==='shadow'),b('♥',"setPVFilter('zone','heart')",_pvFilter.zone==='heart'))}
+    ${g('Field',b('All',"setPVFilter('bipZone','all')",_pvFilter.bipZone==='all'),b('IF',"setPVFilter('bipZone','if')",_pvFilter.bipZone==='if'),b('OF',"setPVFilter('bipZone','of')",_pvFilter.bipZone==='of'),b('L',"setPVFilter('bipZone','l')",_pvFilter.bipZone==='l'),b('LC',"setPVFilter('bipZone','lc')",_pvFilter.bipZone==='lc'),b('C',"setPVFilter('bipZone','c')",_pvFilter.bipZone==='c'),b('RC',"setPVFilter('bipZone','rc')",_pvFilter.bipZone==='rc'),b('R',"setPVFilter('bipZone','r')",_pvFilter.bipZone==='r'),b('Foul',"setPVFilter('bipZone','foul')",_pvFilter.bipZone==='foul'))}
+  </div>`;
+}
+
+function renderPitchView(){
+  const pitches=_pvGetPitches();
+  const bip=pitches.filter(p=>p.sx!=null&&p.sy!=null&&(p.rt==='bip'||p.rt==='hr'));
+  const withLoc=pitches.filter(p=>p.zx!=null&&p.zy!=null);
+
+  // Nav title
+  let titleParts=[];
+  if(_pvCellMode){
+    titleParts.push(AN_PT_NAMES[_pvPT]||_pvPT);
+    titleParts.push(`${_pvB}-${_pvS}`);
+  } else {
+    titleParts.push(_pvPT&&_pvPT!=='all'?(AN_PT_NAMES[_pvPT]||_pvPT):'All pitches');
+    if(_pvCountKey!=='all') titleParts.push(_pvCountKey+' count');
+  }
+  document.getElementById('pv-nav-title').textContent=titleParts.join(' · ');
+
+  // Browse-mode selectors
+  let browseHTML='';
+  if(!_pvCellMode){
+    const rawPitches=_anGetPitches();
+    const ptPresent=['all',...AN_PT_ORDER.filter(pt=>rawPitches.some(p=>p.pt===pt))];
+    const b2=(label,onclick,active)=>`<button onclick="${onclick}" style="padding:5px 10px;font-size:11px;font-weight:700;border-radius:20px;border:1.5px solid ${active?'var(--accent)':'var(--border2)'};background:${active?'var(--accent)':'var(--bg3)'};color:${active?'#fff':'var(--text2)'};cursor:pointer;white-space:nowrap;">${label}</button>`;
+    browseHTML=`<div style="padding:10px 12px 0;">
+      <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Pitch Type</div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px;">
+        ${ptPresent.map(pt=>b2(pt==='all'?'All':pt,`setPVType('${pt}')`,_pvPT===pt)).join('')}
+      </div>
+      <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Count</div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:4px;">
+        ${[['all','All'],...AN_COUNTS.map(({b,s})=>[`${b}-${s}`,`${b}-${s}`])].map(([v,l])=>b2(l,`setPVCount('${v}')`,_pvCountKey===v)).join('')}
+      </div>
+    </div>`;
+  }
+
+  const rLabels={all:'All results',hits:'Hits only',outs:'Outs only',ks:'Strikeouts',walks:'Walks',barrels:'Barrels'};
+  const zLabels={all:'',up:' · Up',mid:' · Middle',down:' · Down',in:' · In',away:' · Away',shadow:' · Shadow',heart:' · Heart'};
+  const subtitle=`${_pvFilter.result!=='all'?rLabels[_pvFilter.result]+' · ':''}${pitches.length} pitches${zLabels[_pvFilter.zone]||''}`;
+
+  document.getElementById('pv-body').innerHTML=`
+    ${browseHTML}
+    ${_pvChips()}
+    <div style="padding:6px 12px 10px;font-size:11px;color:var(--text3);">${subtitle}</div>
+    <div style="padding:0 12px 8px;">
+      <div style="font-size:11px;color:var(--text2);font-weight:600;margin-bottom:6px;">Spray Chart · ${bip.length} balls in play</div>
+      <div style="position:relative;width:100%;aspect-ratio:2/1;">
+        <canvas id="pv-spray-cv" style="position:absolute;inset:0;width:100%;height:100%;display:block;cursor:pointer;border-radius:var(--rsm);background:rgba(255,255,255,0.02);"></canvas>
+      </div>
+    </div>
+    <div style="padding:0 12px 16px;">
+      <div style="font-size:11px;color:var(--text2);font-weight:600;margin-bottom:6px;">Zone Map · ${withLoc.length} pitches with location</div>
+      <div style="display:flex;justify-content:center;">
+        <canvas id="pv-zone-cv" width="220" height="220" style="display:block;cursor:pointer;border-radius:var(--rsm);"></canvas>
+      </div>
+      <div style="margin-top:8px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+        ${[['#e85555','FB/2S/SI/FC'],['#4a9eff','SL/SV/CB'],['#4caf7d','CH/FS/FO/KN/EP'],['#9090a8','OT']].map(([col,lbl])=>`<div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text3);"><div style="width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0;"></div>${lbl}</div>`).join('')}
+      </div>
+    </div>`;
+
+  requestAnimationFrame(()=>{ drawPVSpray(pitches); drawPVZone(pitches); });
+}
+
+function _pvPTColor(pt){
+  const m={'FB':'#e85555','2S':'#e85555','SI':'#e85555','FC':'#e85555','SL':'#4a9eff','SV':'#4a9eff','CB':'#4a9eff','CH':'#4caf7d','FS':'#4caf7d','FO':'#4caf7d','EP':'#4caf7d','KN':'#4caf7d','OT':'#9090a8'};
+  return m[pt]||'#9090a8';
+}
+
+function drawPVSpray(pitches){
+  const cv=document.getElementById('pv-spray-cv');
+  if(!cv) return;
+  const dpr=window.devicePixelRatio||1;
+  const rect=cv.getBoundingClientRect();
+  if(!rect.width){ requestAnimationFrame(()=>drawPVSpray(pitches)); return; }
+  cv.width=Math.round(rect.width*dpr);
+  cv.height=Math.round(rect.height*dpr);
+  const ctx=cv.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  const W=rect.width, H=rect.height;
+  drawFieldShape(ctx,W,H);
+  const sb=getFieldBounds(W,H);
+  drawSprayZoneOverlay(ctx,sb);
+  const bip=pitches.filter(p=>p.sx!=null&&p.sy!=null);
+  bip.forEach(p=>{
+    const x=sb.x+p.sx*sb.w, y=sb.y+p.sy*sb.h;
+    const isHR=p.rt==='hr', isHit=p.bipOut==='hit'||isHR;
+    const r=isHR?7:5;
+    let col='#9090a8';
+    if(p.bipType==='GB') col='#4a9eff';
+    else if(p.bipType==='LD') col='#f0873a';
+    else if(p.bipType==='FLY'||isHR) col='#e85555';
+    else if(p.bipType==='PU') col='#9090a8';
+    ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2);
+    ctx.fillStyle=isHit?col:'transparent';
+    ctx.strokeStyle=isHR?'#f5c842':col;
+    ctx.lineWidth=p.hh?2.5:1.5;
+    if(p.wc) ctx.setLineDash([2,2]); else ctx.setLineDash([]);
+    ctx.fill(); ctx.stroke(); ctx.setLineDash([]);
+    if(isHR){
+      ctx.fillStyle='#f5c842'; ctx.font='bold 7px -apple-system';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText('HR',x,y);
+    }
+  });
+  cv.onclick=function(e){
+    const rc=cv.getBoundingClientRect();
+    const mx=e.clientX-rc.left, my=e.clientY-rc.top;
+    const sb2=getFieldBounds(rc.width,rc.height);
+    let closest=null,minD=Infinity;
+    bip.forEach(p=>{
+      const dx=sb2.x+p.sx*sb2.w-mx, dy=sb2.y+p.sy*sb2.h-my;
+      const d=Math.sqrt(dx*dx+dy*dy);
+      if(d<minD){minD=d;closest=p;}
+    });
+    if(closest&&minD<22) showPVPopup(closest);
+  };
+}
+
+function drawPVZone(pitches){
+  const cv=document.getElementById('pv-zone-cv');
+  if(!cv) return;
+  const ctx=cv.getContext('2d');
+  const W=cv.width, H=cv.height;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='rgba(255,255,255,0.03)'; ctx.fillRect(0,0,W,H);
+  const cw=W/5, ch=H/5;
+  // Zone highlight
+  const az=_pvFilter.zone&&_pvFilter.zone!=='all'?_pvFilter.zone:null;
+  if(az){ ctx.fillStyle='rgba(67,113,203,0.15)'; getZoneCells(az).forEach(({col,row})=>ctx.fillRect(col*cw,row*ch,cw,ch)); }
+  // Grid
+  ctx.strokeStyle='rgba(255,255,255,0.1)'; ctx.lineWidth=1;
+  for(let i=1;i<5;i++){
+    ctx.beginPath();ctx.moveTo(i*cw,0);ctx.lineTo(i*cw,H);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(0,i*ch);ctx.lineTo(W,i*ch);ctx.stroke();
+  }
+  const szX=cw,szY=ch,szW=cw*3,szH=ch*3;
+  ctx.strokeStyle='rgba(255,255,255,0.4)'; ctx.lineWidth=2;
+  ctx.strokeRect(szX,szY,szW,szH);
+  ctx.strokeStyle='rgba(255,255,255,0.2)'; ctx.lineWidth=1;
+  for(let i=1;i<3;i++){
+    ctx.beginPath();ctx.moveTo(szX+i*(szW/3),szY);ctx.lineTo(szX+i*(szW/3),szY+szH);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(szX,szY+i*(szH/3));ctx.lineTo(szX+szW,szY+i*(szH/3));ctx.stroke();
+  }
+  // Dots
+  const withLoc=pitches.filter(p=>p.zx!=null&&p.zy!=null);
+  withLoc.forEach(p=>{
+    if(az){
+      const inZ=AN_ZONE_REGIONS[az]?.includes(getZoneNum(p.zx,p.zy));
+      ctx.globalAlpha=inZ?1.0:0.22;
+    }
+    ctx.fillStyle=_pvPTColor(p.pt);
+    ctx.beginPath(); ctx.arc(p.zx*W,p.zy*H,4,0,Math.PI*2); ctx.fill();
+  });
+  ctx.globalAlpha=1.0;
+  cv.onclick=function(e){
+    const rc=cv.getBoundingClientRect();
+    const sx=rc.width/W, sy=rc.height/H;
+    const x=(e.clientX-rc.left)/sx, y=(e.clientY-rc.top)/sy;
+    let closest=null,minD=Infinity;
+    withLoc.forEach(p=>{
+      const dx=p.zx*W-x, dy=p.zy*H-y;
+      const d=Math.sqrt(dx*dx+dy*dy);
+      if(d<minD){minD=d;closest=p;}
+    });
+    if(closest&&minD<22) showPVPopup(closest);
+  };
+}
+
+function showPVPopup(p){
+  const ptName=AN_PT_NAMES[p.pt]||p.pt||'—';
+  const count=`${p.ballsBefore}-${p.strikesBefore}`;
+  const zn=(p.zx!=null&&p.zy!=null)?getZoneNum(p.zx,p.zy):null;
+  const znLabel=zn?getZoneLabel(zn):'—';
+  const RM={k:'Strikeout',kc:'Called K',d3k:'Dropped 3K',bb:'Walk',ibb:'Int. Walk',hbp:'HBP',
+    bip:'In Play',hr:'Home Run',foul:'Foul',ball:'Ball',strike:'Called Strike',swstr:'Swinging Strike'};
+  const result=RM[p.rt]||p.rt||'—';
+  const bipExtra=(p.rt==='bip'&&p.bipType)?` · ${p.bipType}${p.bipOut?'/'+p.bipOut[0].toUpperCase():''}${p.hh?' 🔥':''}${p.wc?' (weak)':''}`:
+    (p.rt==='hr'?' · HR 🔴':'');
+  const rParts=[];
+  if(p.runners?.b1) rParts.push('1B');
+  if(p.runners?.b2) rParts.push('2B');
+  if(p.runners?.b3) rParts.push('3B');
+  const rStr=rParts.length?rParts.join(', '):'Bases empty';
+  const halfStr=p.half==='top'?'Top':'Bot';
+  const fzCode=getFieldZone(p.sx,p.sy);
+  const fzLabel=fzCode?FZ_LABEL[fzCode]||fzCode:'—';
+  showModal(`${ptName} · ${count}`,`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 20px;font-size:13px;">
+      <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;margin-bottom:3px;">Result</div><div style="font-weight:700;">${result}${bipExtra}</div></div>
+      <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;margin-bottom:3px;">Inning</div><div style="font-weight:700;">${halfStr} ${p.inning||'?'}</div></div>
+      <div style="grid-column:1/-1;"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;margin-bottom:3px;">Batter</div><div style="font-weight:700;">${p.bName||'Unknown'} · ${p.bHand||'?'}HH</div></div>
+      <div style="grid-column:1/-1;"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;margin-bottom:3px;">Runners on Base</div><div style="font-weight:700;">${rStr}</div></div>
+      <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;margin-bottom:3px;">Pitch Zone</div><div style="font-weight:700;">${znLabel}</div></div>
+      <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;margin-bottom:3px;">Field Zone</div><div style="font-weight:700;">${fzLabel}</div></div>
+      ${p.velo?`<div style="grid-column:1/-1;"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;margin-bottom:3px;">Velocity</div><div style="font-weight:700;">${p.velo} mph</div></div>`:''}
+    </div>
   `);
 }
 
@@ -3882,8 +4558,32 @@ function devSimGame(){
   const _ri=(a,b)=>Math.floor(_r()*(b-a+1))+a;
   const _pick=a=>a[Math.floor(_r()*a.length)];
 
-  if(!S.pitchers.length){alert('Add pitchers to roster first.');return;}
-  const rP=S.pitchers.filter(p=>p.active!==false);
+  // Auto-generate a sim-only pitching staff — never saved to S.pitchers
+  const _SIM_NAMES=[
+    ['A. Torres','B. Reyes','C. Walsh','D. Nguyen','E. Brooks'],
+    ['F. Coleman','G. Patel','H. Romero','I. Jensen','J. Castillo'],
+    ['K. Murphy','L. Owens','M. Holt','N. Park','O. Simmons'],
+    ['P. Drake','Q. Vega','R. Sutton','S. Yuen','T. Flores'],
+  ];
+  const _SIM_NUMS=['11','18','22','28','34','37','41','46'];
+  const _SIM_ARMS=['R','R','R','R','L','L','R']; // weighted right
+  const _nameRow=_pick(_SIM_NAMES);
+  const _simPitcher=(idx,throws)=>({
+    name:_nameRow[idx%_nameRow.length], num:_SIM_NUMS[_ri(0,_SIM_NUMS.length-1)],
+    throws:throws||_pick(_SIM_ARMS),
+    arsenal:_pick([
+      ['FB','SL','CH'],['FB','SL','CB','CH'],['FB','2S','SL','CH'],
+      ['FB','FC','SL','CH'],['FB','SI','CH','SL'],['FB','SV','CB','CH'],
+    ]),
+    active:true,
+  });
+  const rP=[
+    _simPitcher(0,_pick(['R','R','R','L'])),  // starter
+    _simPitcher(1),                            // middle reliever
+    _simPitcher(2),                            // middle reliever
+    _simPitcher(3),                            // setup
+    _simPitcher(4),                            // closer
+  ];
 
   // Cumulative probability tables per count [ball, cStrike, swStr, foul, bip, hr]
   const CP={
@@ -4046,8 +4746,8 @@ function devSimGame(){
   };
   S.games=S.games.filter(x=>!x.id.startsWith('sim_'));
   S.games.push(g);S.activeId=null;
-  _anGameId=id;_anFrom='home';_anScope='game';_anMetric='usage';_anDeep=false;
-  _anFilter={hand:'both',sit:'all',loc:'all'};
+  _anGameId=id;_anFrom='home';_anMetric='usage';_anDeep=false;
+  _anFilter={games:[id],pitcher:[],hand:'both',sit:'all',trip:'all',loc:'all',zone:'all',bipZone:'all'};
   save();go('analytics');
 }
 
