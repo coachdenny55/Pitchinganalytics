@@ -3665,7 +3665,7 @@ window.addEventListener('orientationchange',()=>{ setTimeout(()=>{ if(G){ drawZo
 // ══════════════════════════════════════════
 // ANALYTICS MATRIX
 // ══════════════════════════════════════════
-let _anGameId=null,_anFrom='home',_anMetric='usage',_anDeep=false;
+let _anGameId=null,_anFrom='home',_anMetric='usage',_anDeep=false,_anMatrixView='pt_count';
 let _anFilter={games:[],pitcher:[],hand:'both',sit:'all',trip:'all',loc:'all',zone:'all',bipZone:'all'};
 
 const AN_COUNTS=[
@@ -3691,6 +3691,15 @@ const AN_METRICS=[
   {id:'wl11',   label:'1-1 W%',   desc:'Pitcher win% in ABs where this pitch was thrown at 1-1'},
 ];
 const AN_SIMPLE=['usage','strike','baa','whiff','barrel'];
+const AN_MATRIX_VIEWS=[
+  {id:'pt_count',   label:'Type×Count'},
+  {id:'pt_result',  label:'Type×Result'},
+  {id:'pt_zone',    label:'Type×Zone'},
+  {id:'count_pt',   label:'Count×Type'},
+  {id:'pt_hand',    label:'Type×Hand'},
+  {id:'pt_sit',     label:'Type×Sit'},
+  {id:'pt_contact', label:'Type×Contact'},
+];
 
 // ── Field Zone Classification (calibrated from Field.png 1536×1024) ──
 const FZ={
@@ -3804,7 +3813,7 @@ function getZoneCells(zf){
 
 function showAnalytics(gameId,from='home'){
   _anGameId=gameId; _anFrom=from;
-  _anMetric='usage'; _anDeep=false;
+  _anMetric='usage'; _anDeep=false; _anMatrixView='pt_count';
   _anFilter={games:gameId?[gameId]:[],pitcher:[],hand:'both',sit:'all',trip:'all',loc:'all',zone:'all',bipZone:'all'};
   go('analytics');
 }
@@ -4012,6 +4021,263 @@ function _computeAnMatrix(pitches){
   return cells;
 }
 
+function setAnMatrixView(id){ _anMatrixView=id; _anMetric='usage'; renderAnalytics(); }
+
+function showAnMatrixPicker(){
+  const body=AN_MATRIX_VIEWS.map(v=>`<div onclick="setAnMatrixView('${v.id}');hideModal()" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;-webkit-tap-highlight-color:transparent;">
+    <div style="font-size:14px;font-weight:600;color:var(--text);">${v.label}</div>
+    <span style="font-size:18px;color:var(--accent);width:20px;text-align:right;">${_anMatrixView===v.id?'✓':''}</span>
+  </div>`).join('');
+  showModal('Matrix View',body);
+}
+
+function _computeGenMatrix(pitches,rowFn,colFn,rowFilterFn,colMatchFns){
+  const cells={},rowTotals={};
+  const accum=(row,col,p)=>{
+    const key=`${row}_${col}`;
+    if(!cells[key]) cells[key]={row,col,n:0,strikes:0,swings:0,swstr:0,fouls:0,bip:0,hits:0,xbh:0,hhbarrel:0,hhxbh:0,terminal:0,kTerm:0,bbhbpTerm:0,abTerm:0,hitsTerm:0};
+    const c=cells[key]; c.n++;
+    if(p.isStrike) c.strikes++;
+    const isBIP=p.rt==='bip',isHR=p.rt==='hr';
+    const isSwingK=p.rt==='k'||p.rt==='d3k';
+    const isSwstr=p.rt==='swstr',isFoul=p.rt==='foul';
+    const isSwing=isSwstr||isFoul||isBIP||isHR||isSwingK;
+    if(isSwing) c.swings++;
+    if(isSwstr||isSwingK) c.swstr++;
+    if(isFoul) c.fouls++;
+    if(isBIP||isHR){
+      c.bip++;
+      const isHit=p.bipOut==='hit'||isHR;
+      if(isHit){ c.hits++; const isXBH=(p.hitBases>=2)||isHR; if(isXBH){c.xbh++;if(p.hh)c.hhxbh++;} }
+      if(p.hh&&(p.bipType==='LD'||p.bipType==='FLY')) c.hhbarrel++;
+    }
+    if(p.isTerm){
+      c.terminal++;
+      const isK=p.rt==='k'||p.rt==='kc'||p.rt==='d3k';
+      const isBB=p.rt==='bb'||p.rt==='ibb';
+      const isHBP=p.rt==='hbp';
+      const isSAC=isBIP&&p.bipOut==='sac';
+      if(isK) c.kTerm++;
+      if(isBB||isHBP) c.bbhbpTerm++;
+      if(!isBB&&!isHBP&&!isSAC) c.abTerm++;
+      if(p.bipOut==='hit'||isHR) c.hitsTerm++;
+    }
+  };
+  pitches.forEach(p=>{
+    if(!p.pt) return;
+    const row=rowFn(p); if(row==null) return;
+    if(!rowFilterFn||rowFilterFn(p)) rowTotals[row]=(rowTotals[row]||0)+1;
+    if(colMatchFns){
+      colMatchFns.forEach(({id,match})=>{ if(match(p)) accum(row,id,p); });
+    } else {
+      const col=colFn(p); if(col!=null) accum(row,col,p);
+    }
+  });
+  Object.values(cells).forEach(c=>{ c.rowTotal=rowTotals[c.row]||0; });
+  return cells;
+}
+
+function _anValGen(c,mid){
+  if(mid==='usage') return c.rowTotal?c.n/c.rowTotal:0;
+  return _anVal(c,mid);
+}
+
+function _anGetMatrixDef(id){
+  if(id==='pt_result'){
+    const cmf=[
+      {id:'hit', label:'Hit',            match:p=>p.isTerm&&(p.bipOut==='hit'||p.rt==='hr')},
+      {id:'out', label:'Out',            match:p=>p.isTerm&&(p.bipOut==='out'||p.bipOut==='sac'||p.bipOut==='error')},
+      {id:'k',   label:'K',              match:p=>p.isTerm&&(p.rt==='k'||p.rt==='kc'||p.rt==='d3k')},
+      {id:'bb',  label:'BB',             match:p=>p.isTerm&&(p.rt==='bb'||p.rt==='ibb')},
+      {id:'hbp', label:'HBP',            match:p=>p.isTerm&&p.rt==='hbp'},
+      {id:'hr',  label:'HR', gapLeft:50,  match:p=>p.isTerm&&p.rt==='hr'},
+    ];
+    return{rowFn:p=>p.pt,rowOrder:AN_PT_ORDER,colFn:null,colMatchFns:cmf,
+      rowFilterFn:p=>p.isTerm,
+      colDefs:cmf.map(({id,label,gapLeft})=>({id,label,gapLeft})),
+      colWidth:48,note:'HR counts in both HR and Hit — terminal pitch of each at-bat'};
+  }
+  if(id==='pt_zone'){
+    const zCols=[
+      {id:'heart',   label:'♥',        zones:[5]},
+      {id:'up',      label:'Up',        zones:[1,2,3,11,12]},
+      {id:'mid',     label:'Mid',       zones:[4,5,6]},
+      {id:'down',    label:'Down',      zones:[7,8,9,13,14]},
+      {id:'in',      label:'In',        zones:[1,4,7,11,13]},
+      {id:'away',    label:'Away',      zones:[3,6,9,12,14]},
+      {id:'shadow',  label:'Shadow',    zones:[11,12,13,14]},
+      {id:'up-in',   label:'Up-In',     zones:[1,11]},
+      {id:'up-away', label:'Up-Away',   zones:[3,12]},
+      {id:'dn-in',   label:'Dn-In',     zones:[7,13]},
+      {id:'dn-away', label:'Dn-Away',   zones:[9,14]},
+    ];
+    const cmf=zCols.map(({id,label,zones})=>({id,label,
+      match:p=>p.zx!=null&&p.zy!=null&&zones.includes(getZoneNum(p.zx,p.zy))}));
+    return{rowFn:p=>p.pt,rowOrder:AN_PT_ORDER,colFn:null,colMatchFns:cmf,
+      rowFilterFn:p=>p.zx!=null&&p.zy!=null,
+      colDefs:cmf.map(({id,label})=>({id,label})),
+      colWidth:52,note:'Overlapping zones — pitches with location logged only'};
+  }
+  if(id==='count_pt'){
+    return{rowFn:p=>`${p.ballsBefore}_${p.strikesBefore}`,
+      rowOrder:AN_COUNTS.map(({b,s})=>`${b}_${s}`),
+      colFn:p=>p.pt,rowFilterFn:()=>true,
+      colDefs:AN_PT_ORDER.map(pt=>({id:pt,label:pt})),
+      colWidth:46,note:'Pitch type usage within each count'};
+  }
+  if(id==='pt_hand'){
+    return{rowFn:p=>p.pt,rowOrder:AN_PT_ORDER,
+      colFn:p=>p.bHand==='R'?'R':p.bHand==='L'?'L':null,
+      rowFilterFn:p=>p.bHand==='R'||p.bHand==='L',
+      colDefs:[{id:'R',label:'vs RHH'},{id:'L',label:'vs LHH'}],
+      colWidth:72,note:'Split by batter handedness'};
+  }
+  if(id==='pt_sit'){
+    const cmf=[
+      {id:'empty',label:'Bases\nEmpty',match:p=>!p.runners?.b1&&!p.runners?.b2&&!p.runners?.b3},
+      {id:'r1',   label:'Runner\n1st', match:p=>!!(p.runners?.b1)&&!p.runners?.b2&&!p.runners?.b3},
+      {id:'risp', label:'RISP',        match:p=>!!(p.runners?.b2||p.runners?.b3)},
+      {id:'2out', label:'2 Outs',      match:p=>p.outsBefore===2},
+    ];
+    return{rowFn:p=>p.pt,rowOrder:AN_PT_ORDER,colFn:null,colMatchFns:cmf,
+      rowFilterFn:()=>true,
+      colDefs:cmf.map(({id,label})=>({id,label})),
+      colWidth:58,note:'Overlapping — a pitch with RISP+2out counts in both columns'};
+  }
+  if(id==='pt_contact'){
+    return{rowFn:p=>p.pt,rowOrder:AN_PT_ORDER,
+      colFn:p=>{
+        if(p.rt!=='bip'&&p.rt!=='hr') return null;
+        if(p.hh) return 'hard';
+        if(p.wc) return 'weak';
+        return 'norm';
+      },
+      rowFilterFn:p=>p.rt==='bip'||p.rt==='hr',
+      colDefs:[{id:'norm',label:'Normal'},{id:'hard',label:'Hard Hit'},{id:'weak',label:'Weak'}],
+      colWidth:62,note:'In-play contact quality only'};
+  }
+  return null;
+}
+
+function _renderGenMatrix(pitches,def,matrixId){
+  const{rowFn,colFn,rowFilterFn,rowOrder,colDefs,colWidth,note,colMatchFns}=def;
+  const cells=_computeGenMatrix(pitches,rowFn,colFn,rowFilterFn,colMatchFns);
+  const CW=colWidth||58,LW=46;
+  const isCountPt=matrixId==='count_pt';
+  const ptTotals={};
+  if(!isCountPt) pitches.forEach(p=>{ if(p.pt) ptTotals[p.pt]=(ptTotals[p.pt]||0)+1; });
+  const rowsPresent=rowOrder.filter(r=>colDefs.some(col=>cells[`${r}_${col.id}`]?.n>0));
+  if(!rowsPresent.length) return `<div style="text-align:center;padding:30px 20px;color:var(--text2);font-size:14px;">No data for this view with current filters.</div>`;
+  const ml=col=>col.gapLeft?`${col.gapLeft}px`:'1px';
+  const extraGap=colDefs.reduce((a,col)=>a+(col.gapLeft||1)-1,0);
+  const hdrCells=colDefs.map(col=>`<div style="width:${CW}px;flex-shrink:0;text-align:center;font-size:10px;font-weight:700;color:var(--text2);padding:5px 2px;margin:1px 1px 1px ${ml(col)};line-height:1.3;">${col.label.replace('\n','<br>')}</div>`).join('');
+  const dataRows=rowsPresent.map(rowId=>{
+    let rowLabel,rowSub;
+    if(isCountPt){
+      rowLabel=rowId.replace('_','-');
+      const anyCell=Object.values(cells).find(c=>c.row===rowId);
+      rowSub=(anyCell?.rowTotal||0)+'p';
+    } else {
+      rowLabel=rowId;
+      rowSub=pitches.length?Math.round((ptTotals[rowId]||0)/pitches.length*100)+'%':'—';
+    }
+    const rowCells=colDefs.map(col=>{
+      const c=cells[`${rowId}_${col.id}`];
+      if(!c||c.n===0) return `<div style="width:${CW}px;flex-shrink:0;height:38px;margin:1px 1px 1px ${ml(col)};"></div>`;
+      const val=_anValGen(c,_anMetric);
+      const disp=_anFmt(val,_anMetric);
+      const clr=_anColor(val,_anMetric);
+      const safeRow=rowId.replace(/'/g,"\\'");
+      return `<div onclick="showAnGenCell('${matrixId}','${safeRow}','${col.id}')" style="width:${CW}px;flex-shrink:0;height:38px;background:var(--bg3);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;cursor:pointer;${clr};margin:1px 1px 1px ${ml(col)};">${disp}</div>`;
+    }).join('');
+    return `<div style="display:flex;align-items:center;margin-bottom:2px;">
+      <div style="width:${LW}px;flex-shrink:0;padding-right:6px;">
+        <div style="font-size:12px;font-weight:800;color:var(--text);">${rowLabel}</div>
+        <div style="font-size:10px;color:var(--text3);">${rowSub}</div>
+      </div>
+      <div style="display:flex;">${rowCells}</div>
+    </div>`;
+  }).join('');
+  return `${note?`<div style="font-size:10px;color:var(--accent);margin-bottom:6px;">${note}</div>`:''}
+    <div style="font-size:10px;color:var(--text3);margin-bottom:8px;">Tap any cell for full breakdown</div>
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+      <div style="min-width:${LW+colDefs.length*CW+extraGap+12}px;">
+        <div style="display:flex;align-items:center;margin-bottom:2px;">
+          <div style="width:${LW}px;flex-shrink:0;"></div>
+          <div style="display:flex;">${hdrCells}</div>
+        </div>
+        ${dataRows}
+      </div>
+    </div>
+    <div style="margin-top:14px;font-size:11px;color:var(--text3);text-align:center;">${pitches.length} pitches · ${rowsPresent.length} rows</div>
+    <button onclick="showBrowsePitches()" style="margin-top:12px;width:100%;padding:11px;background:var(--bg3);border:1.5px solid var(--border2);color:var(--text2);font-weight:700;font-size:13px;border-radius:var(--rsm);cursor:pointer;">Browse Pitches →</button>`;
+}
+
+function showAnGenCell(matrixId,rowId,colId){
+  const def=_anGetMatrixDef(matrixId); if(!def) return;
+  const pitches=_anFilterPitches(_anGetPitches());
+  const cells=_computeGenMatrix(pitches,def.rowFn,def.colFn,def.rowFilterFn,def.colMatchFns);
+  const c=cells[`${rowId}_${colId}`]; if(!c) return;
+  const colDef=def.colDefs.find(d=>d.id===colId);
+  const isCountPt=matrixId==='count_pt';
+  const rowLabel=isCountPt?rowId.replace('_','-'):(AN_PT_NAMES[rowId]||rowId);
+  const colLabel=colDef?colDef.label.replace('\n',' '):colId;
+  const nWarn=c.n<5?`<div style="font-size:11px;color:var(--red);background:rgba(232,85,85,0.1);border-radius:var(--rsm);padding:7px 10px;margin-bottom:12px;">Small sample — n=${c.n}</div>`:'';
+  const metricRows=AN_METRICS.map(m=>{
+    const val=_anValGen(c,m.id);
+    const fmt=_anFmt(val,m.id);
+    const clr=_anColor(val,m.id);
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);">
+      <div style="font-size:13px;color:var(--text2);">${m.label}</div>
+      <div style="font-size:14px;font-weight:700;${clr}">${fmt}</div>
+    </div>`;
+  }).join('');
+  let bipSection='';
+  if(c.bip>0){
+    const colMatch=def.colMatchFns
+      ? def.colMatchFns.find(d=>d.id===colId)?.match
+      : p=>def.colFn(p)===colId;
+    const cellPs=pitches.filter(p=>{
+      if(!p.pt) return false;
+      if(def.rowFn(p)!==rowId) return false;
+      if(!colMatch||!colMatch(p)) return false;
+      return p.rt==='bip'||p.rt==='hr';
+    });
+    const bipTypes=['GB','LD','FLY','PU'];
+    const bipRows=bipTypes.map(bt=>{
+      const bp=cellPs.filter(p=>p.bipType===bt); if(!bp.length) return null;
+      const h=bp.filter(p=>p.bipOut==='hit').length;
+      const o=bp.filter(p=>p.bipOut==='out'||p.bipOut==='sac').length;
+      const hh=bp.filter(p=>p.hh).length;
+      return `<div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid var(--border);">
+        <div style="font-weight:700;color:var(--text2);">${bt}</div>
+        <div style="color:var(--text2);">${bp.length} · ${h?`<span style="color:var(--green)">${h}H</span> `:''}${o?`${o}O `:''}${hh?`<span style="color:var(--accent)">${hh}🔥</span>`:''}</div>
+      </div>`;
+    }).filter(Boolean).join('');
+    if(bipRows) bipSection=`<div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin:14px 0 6px;">BIP Breakdown</div>${bipRows}`;
+  }
+  let viewBtn='';
+  if(isCountPt){
+    const[b,s]=rowId.split('_');
+    viewBtn=`<button onclick="showPitchView('${colId}',${b},${s})" style="margin-top:16px;width:100%;padding:11px;background:var(--accent);color:#fff;font-weight:700;font-size:14px;border:none;border-radius:var(--rsm);cursor:pointer;">View Pitches →</button>`;
+  } else {
+    viewBtn=`<button onclick="showPitchViewPT('${rowId}')" style="margin-top:16px;width:100%;padding:11px;background:var(--accent);color:#fff;font-weight:700;font-size:14px;border:none;border-radius:var(--rsm);cursor:pointer;">View ${rowId} Pitches →</button>`;
+  }
+  showModal(`<span style="font-size:13px;">${rowLabel} · ${colLabel}</span>`,`
+    <div style="font-size:12px;color:var(--text2);margin-bottom:10px;">n = ${c.n} pitches</div>
+    ${nWarn}${metricRows}${bipSection}${viewBtn}
+  `);
+}
+
+function showPitchViewPT(pt){
+  hideModal();
+  _pvCellMode=false;
+  _pvPT=pt; _pvB='all'; _pvS='all'; _pvCountKey='all';
+  _pvFilter={result:'all',hand:'both',sit:'all',trip:'all',inning:'all',zone:'all',bipZone:'all'};
+  go('pitchview');
+  requestAnimationFrame(renderPitchView);
+}
+
 function _anVal(c,mid){
   switch(mid){
     case 'usage':  return c.countTotal?c.n/c.countTotal:0;
@@ -4062,14 +4328,18 @@ function renderAnalytics(){
 
   const raw=_anGetPitches();
   const pitches=_anFilterPitches(raw);
-  const cells=_computeAnMatrix(pitches);
-
-  const ptPresent=AN_PT_ORDER.filter(pt=>AN_COUNTS.some(({b,s})=>cells[`${pt}_${b}_${s}`]?.n>0));
   const shownMetrics=_anDeep?AN_METRICS:AN_METRICS.filter(m=>AN_SIMPLE.includes(m.id));
   const activeMeta=AN_METRICS.find(m=>m.id===_anMetric)||AN_METRICS[0];
 
   const _btn=(label,onclick,active)=>`<button onclick="${onclick}" style="padding:4px 9px;font-size:11px;font-weight:700;background:${active?'var(--accent)':'none'};color:${active?'#fff':'var(--text2)'};border:none;border-radius:4px;cursor:pointer;">${label}</button>`;
   const _grp=(label,extra='')=>(btns)=>`<div style="display:flex;gap:3px;background:var(--bg3);border-radius:var(--rsm);padding:3px;align-items:center;">${label?`<span style="font-size:10px;font-weight:700;color:var(--text3);padding:0 4px 0 2px;">${label}</span>`:''}${extra}${btns}</div>`;
+
+  const activeView=AN_MATRIX_VIEWS.find(v=>v.id===_anMatrixView)||AN_MATRIX_VIEWS[0];
+  const viewPillsHTML=`<button onclick="showAnMatrixPicker()" style="width:100%;padding:9px 12px;background:var(--bg3);border:1.5px solid var(--accent);border-radius:var(--rsm);font-size:12px;font-weight:700;color:var(--text);cursor:pointer;display:flex;align-items:center;gap:6px;margin-bottom:10px;">
+    <span style="font-size:10px;font-weight:700;color:var(--text3);flex-shrink:0;">View</span>
+    <span style="flex:1;text-align:left;">${activeView.label}</span>
+    <span style="color:var(--text3);font-size:10px;flex-shrink:0;">▾</span>
+  </button>`;
 
   const filtersHTML=`<div style="margin-bottom:14px;">
     <div style="display:flex;gap:8px;margin-bottom:10px;">
@@ -4084,6 +4354,7 @@ function renderAnalytics(){
         <span style="color:var(--text3);font-size:10px;flex-shrink:0;">▾</span>
       </button>
     </div>
+    ${viewPillsHTML}
     <div style="display:flex;gap:7px;flex-wrap:wrap;">
       ${_grp('H')([['both','Both'],['L','LHH'],['R','RHH']].map(([v,l])=>_btn(l,`setAnFilter('hand','${v}')`,_anFilter.hand===v)).join(''))}
       ${_grp('Sit')([['all','All'],['risp','RISP'],['2out','2-Out']].map(([v,l])=>_btn(l,`setAnFilter('sit','${v}')`,_anFilter.sit===v)).join(''))}
@@ -4101,7 +4372,22 @@ function renderAnalytics(){
   </div>
   <div style="font-size:11px;color:var(--text3);margin-bottom:10px;">${activeMeta.desc}</div>`;
 
-  if(!pitches.length||!ptPresent.length){
+  if(!pitches.length){
+    document.getElementById('an-body').innerHTML=`<div style="padding:16px;">${filtersHTML}${chipsHTML}<div style="text-align:center;padding:40px 20px;color:var(--text2);font-size:14px;">No pitches match the current filters.</div></div>`;
+    return;
+  }
+
+  if(_anMatrixView!=='pt_count'){
+    const def=_anGetMatrixDef(_anMatrixView);
+    document.getElementById('an-body').innerHTML=`<div style="padding:16px;">${filtersHTML}${chipsHTML}${_renderGenMatrix(pitches,def,_anMatrixView)}</div>`;
+    return;
+  }
+
+  // pt_count matrix
+  const cells=_computeAnMatrix(pitches);
+  const ptPresent=AN_PT_ORDER.filter(pt=>AN_COUNTS.some(({b,s})=>cells[`${pt}_${b}_${s}`]?.n>0));
+
+  if(!ptPresent.length){
     document.getElementById('an-body').innerHTML=`<div style="padding:16px;">${filtersHTML}${chipsHTML}<div style="text-align:center;padding:40px 20px;color:var(--text2);font-size:14px;">No pitches match the current filters.</div></div>`;
     return;
   }
