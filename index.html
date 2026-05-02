@@ -3439,14 +3439,14 @@ function renderABDetailCanvas(abNum){
   // Zone fill: always grey-blue on strike zone + shadow; unselected cells fade when filter active
   const activeZone=_anFilter&&_anFilter.zone&&_anFilter.zone!=='all'?_anFilter.zone:null;
   if(!activeZone){
-    ctx.fillStyle='rgba(67,113,203,0.22)';
+    ctx.fillStyle='rgba(67,113,203,0.20)';
     ctx.fillRect(szX,szY,szW,szH);
     getZoneCells('shadow').forEach(({col,row})=>ctx.fillRect(col*cw,row*ch,cw,ch));
   } else {
     ctx.fillStyle='rgba(67,113,203,0.05)';
     for(let r=1;r<=3;r++) for(let c=1;c<=3;c++) ctx.fillRect(c*cw,r*ch,cw,ch);
     getZoneCells('shadow').forEach(({col,row})=>ctx.fillRect(col*cw,row*ch,cw,ch));
-    ctx.fillStyle='rgba(67,113,203,0.22)';
+    ctx.fillStyle='rgba(67,113,203,0.20)';
     getZoneCells(activeZone).forEach(({col,row})=>ctx.fillRect(col*cw,row*ch,cw,ch));
   }
   // Grid
@@ -4489,14 +4489,14 @@ function drawPVZone(pitches){
   // Zone fill: always grey-blue on strike zone + shadow; unselected cells fade when filter active
   const az=_pvFilter.zone&&_pvFilter.zone!=='all'?_pvFilter.zone:null;
   if(!az){
-    ctx.fillStyle='rgba(67,113,203,0.22)';
+    ctx.fillStyle='rgba(67,113,203,0.20)';
     ctx.fillRect(szX,szY,szW,szH);
     getZoneCells('shadow').forEach(({col,row})=>ctx.fillRect(col*cw,row*ch,cw,ch));
   } else {
     ctx.fillStyle='rgba(67,113,203,0.05)';
     for(let r=1;r<=3;r++) for(let c=1;c<=3;c++) ctx.fillRect(c*cw,r*ch,cw,ch);
     getZoneCells('shadow').forEach(({col,row})=>ctx.fillRect(col*cw,row*ch,cw,ch));
-    ctx.fillStyle='rgba(67,113,203,0.22)';
+    ctx.fillStyle='rgba(67,113,203,0.20)';
     getZoneCells(az).forEach(({col,row})=>ctx.fillRect(col*cw,row*ch,cw,ch));
   }
   // Grid
