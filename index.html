@@ -230,6 +230,31 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 .field-event-btn { position: absolute; bottom: 8px; right: 8px; z-index: 5; padding: 6px 10px; background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--rsm); font-size: 11px; color: var(--text2); cursor: pointer; }
 .field-event-btn:active { background: var(--bg4); }
 
+/* Hamburger drawer */
+.ham-ov { display:none; position:fixed; inset:0; z-index:200; flex-direction:row; }
+.ham-ov.on { display:flex; }
+.ham-panel { width:240px; background:var(--bg2); height:100%; display:flex; flex-direction:column; border-right:1px solid var(--border); overflow-y:auto; flex-shrink:0; }
+.ham-dim { flex:1; background:rgba(0,0,0,0.55); }
+.ham-hdr { padding:20px 16px 12px; border-bottom:1px solid var(--border); }
+.ham-app-name { font-size:17px; font-weight:800; color:var(--text); }
+.ham-item { display:flex; align-items:center; gap:12px; padding:14px 16px; border-bottom:1px solid var(--border); cursor:pointer; -webkit-tap-highlight-color:transparent; }
+.ham-item:active { background:var(--bg3); }
+.ham-item.disabled { opacity:0.32; pointer-events:none; }
+.ham-item-icon { font-size:15px; width:20px; text-align:center; flex-shrink:0; }
+.ham-item-label { font-size:14px; font-weight:600; color:var(--text); flex:1; }
+.ham-item-soon { font-size:10px; color:var(--text3); }
+
+/* Stats screen */
+.stat-table-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; background:#fff; }
+.stat-table { width:100%; border-collapse:collapse; font-size:12px; background:#fff; }
+.stat-table th { padding:8px 5px; text-align:center; color:#555; font-size:10px; font-weight:700; cursor:pointer; white-space:nowrap; border-bottom:2px solid rgba(0,0,0,0.12); background:#f5f5f8; }
+.stat-table th.st-sort-active { color:var(--accent); }
+.stat-table th:first-child { text-align:left; padding-left:12px; cursor:default; min-width:90px; }
+.stat-table td { padding:9px 5px; text-align:center; border-bottom:1px solid rgba(0,0,0,0.07); vertical-align:middle; color:#111; font-size:12px; }
+.stat-table td:first-child { text-align:left; padding-left:12px; }
+.stat-totals td { background:rgba(0,0,0,0.05); font-weight:700; border-top:2px solid rgba(0,0,0,0.12); }
+.stat-tap { color:#111; font-weight:700; cursor:pointer; text-decoration:underline; text-decoration-color:rgba(0,0,0,0.2); -webkit-tap-highlight-color:transparent; }
+
 .game-body { flex: 1; display: flex; flex-direction: row; flex-wrap: nowrap; overflow: hidden; align-items: center; justify-content: center; width: 100%; min-height: 0; gap: 0; }
 .silhouette-panel { width: 120px; min-width: 100px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; position: relative; }
 
@@ -540,9 +565,12 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 <div id="screen-game" class="screen">
   <!-- Top bar -->
   <div class="gbar">
-    <div class="gbar-left" onclick="showPitcherPanel()">
-      <div class="pitcher-name-line" id="g-pitcher-name">— · 0 pitches</div>
-      <div class="pitcher-stat-line" id="g-pitcher-stats">Strike%: — · K: 0 · BB: 0</div>
+    <div style="display:flex;align-items:center;gap:6px;flex:1.2;min-width:0;">
+      <div class="menu-btn" onclick="showHam();event.stopPropagation();" style="font-size:18px;flex-shrink:0;">☰</div>
+      <div class="gbar-left" onclick="showPitcherPanel()" style="min-width:0;flex:1;">
+        <div class="pitcher-name-line" id="g-pitcher-name">— · 0 pitches</div>
+        <div class="pitcher-stat-line" id="g-pitcher-stats">St%: —  K: 0  BB: 0  H: 0</div>
+      </div>
     </div>
     <div class="gbar-center">
       <div class="score-row">
@@ -856,9 +884,19 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
   <div class="nav">
     <div class="nav-back" onclick="analyticsBack()">← Back</div>
     <div class="nav-title" id="an-nav-title">Analytics</div>
-    <div style="width:60px;"></div>
+    <div class="menu-btn" onclick="showHam()" style="font-size:18px;">☰</div>
   </div>
   <div id="an-body" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;"></div>
+</div>
+
+<!-- ══ STATS ══ -->
+<div id="screen-stats" class="screen">
+  <div class="nav">
+    <div class="nav-back" onclick="statsBack()">← Back</div>
+    <div class="nav-title">Stats</div>
+    <div class="menu-btn" onclick="showHam()" style="font-size:18px;">☰</div>
+  </div>
+  <div id="st-body" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;"></div>
 </div>
 
 <!-- ══ PITCH VIEW ══ -->
@@ -869,6 +907,43 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
     <div style="width:60px;"></div>
   </div>
   <div id="pv-body" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;"></div>
+</div>
+
+<!-- ══ HAMBURGER MENU ══ -->
+<div class="ham-ov" id="ham-ov">
+  <div class="ham-panel">
+    <div class="ham-hdr">
+      <div class="ham-app-name">⚾ Pitch Charter</div>
+    </div>
+    <div class="ham-item" onclick="navTo('game')">
+      <span class="ham-item-icon">⚾</span>
+      <span class="ham-item-label">Game</span>
+    </div>
+    <div class="ham-item" onclick="navTo('stats')">
+      <span class="ham-item-icon">📋</span>
+      <span class="ham-item-label">Stats</span>
+    </div>
+    <div class="ham-item" onclick="navTo('analytics')">
+      <span class="ham-item-icon">📊</span>
+      <span class="ham-item-label">Analytics</span>
+    </div>
+    <div class="ham-item disabled">
+      <span class="ham-item-icon">🎯</span>
+      <span class="ham-item-label">Practice Mode</span>
+      <span class="ham-item-soon">Soon</span>
+    </div>
+    <div class="ham-item disabled">
+      <span class="ham-item-icon">📍</span>
+      <span class="ham-item-label">Intended vs. Actual</span>
+      <span class="ham-item-soon">Soon</span>
+    </div>
+    <div class="ham-item disabled">
+      <span class="ham-item-icon">⚙</span>
+      <span class="ham-item-label">Settings</span>
+      <span class="ham-item-soon">Soon</span>
+    </div>
+  </div>
+  <div class="ham-dim" onclick="hideHam()"></div>
 </div>
 
 <!-- ══ MODAL ══ -->
@@ -921,7 +996,9 @@ function doBackup(){
 // ══════════════════════════════════════════
 // NAVIGATION
 // ══════════════════════════════════════════
+let _curScreen='home';
 function go(name){
+  _curScreen=name;
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById('screen-'+name).classList.add('active');
   if(name==='home') renderHome();
@@ -929,6 +1006,16 @@ function go(name){
   if(name==='new-game') initNewGame();
   if(name==='game') renderGame();
   if(name==='analytics') renderAnalytics();
+  if(name==='stats') renderStats();
+}
+function showHam(){ document.getElementById('ham-ov').classList.add('on'); }
+function hideHam(){ document.getElementById('ham-ov').classList.remove('on'); }
+function navTo(screen){
+  hideHam();
+  if(screen==='game'){ go(G?'game':'home'); return; }
+  if(screen==='stats'){ showStats(_curScreen); return; }
+  if(screen==='analytics'){ showAnalytics(null,_curScreen); return; }
+  go(screen);
 }
 
 // ══════════════════════════════════════════
@@ -1598,6 +1685,13 @@ function startGame(){
 // ══════════════════════════════════════════
 // GAME RENDER
 // ══════════════════════════════════════════
+function _pShortName(name){
+  if(!name) return '—';
+  const parts=name.trim().split(/\s+/);
+  if(parts.length<2) return name;
+  return parts[0].charAt(0)+'. '+parts.slice(1).join(' ');
+}
+
 function renderGame(){
   if(!G)return;
   const p=curP();
@@ -1606,8 +1700,8 @@ function renderGame(){
   // pitcher line
   const pc=p?p.pc:0, st=p?p.st:0;
   const sp=pc?Math.round(st/pc*100):0;
-  if(p){const pColor=p.throws==='L'?'var(--accent)':'var(--red)';const pBg=p.throws==='L'?'rgba(74,158,255,0.18)':'rgba(232,85,85,0.18)';document.getElementById('g-pitcher-name').innerHTML=`<span style="display:inline-flex;align-items:center;gap:5px;"><span style="width:18px;height:18px;border-radius:50%;background:${pBg};color:${pColor};font-size:9px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">${p.throws||'R'}</span>#${p.num||'—'} ${p.name}</span>`;}else{document.getElementById('g-pitcher-name').textContent='—';}
-  document.getElementById('g-pitcher-stats').textContent='Pitches: '+pc+' · Strike%: '+sp+'% · K: '+(p?p.k:0)+' · BB: '+(p?p.bb:0)+' · H: '+(p?p.h:0);
+  if(p){const pColor=p.throws==='L'?'var(--accent)':'var(--red)';const pBg=p.throws==='L'?'rgba(74,158,255,0.18)':'rgba(232,85,85,0.18)';document.getElementById('g-pitcher-name').innerHTML=`<span style="display:inline-flex;align-items:center;gap:5px;width:100%;overflow:hidden;"><span style="width:18px;height:18px;border-radius:50%;background:${pBg};color:${pColor};font-size:9px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">${p.throws||'R'}</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">#${p.num||'—'} ${_pShortName(p.name)}</span><span style="font-size:13px;font-weight:800;flex-shrink:0;margin-left:4px;">P ${pc}</span></span>`;}else{document.getElementById('g-pitcher-name').textContent='—';}
+  document.getElementById('g-pitcher-stats').textContent=`St%: ${sp}%  K: ${p?p.k:0}  BB: ${p?p.bb:0}  H: ${p?p.h:0}`;
 
   // score + info
   document.getElementById('g-score').textContent=G.ourScore+' – '+G.oppScore;
@@ -1662,6 +1756,10 @@ function renderGame(){
     if(ovImg) ovImg.style.transform='';
     renderPitchList(rp);
   }
+
+  // Field event button follows batter side
+  const feBtn=document.querySelector('#screen-game .field-event-btn');
+  if(feBtn){ if(hand==='L'){feBtn.style.left='8px';feBtn.style.right='auto';}else{feBtn.style.right='8px';feBtn.style.left='auto';} }
 
   drawZone();
   drawSpray();
@@ -3689,16 +3787,19 @@ const AN_METRICS=[
   {id:'k',      label:'K%',       desc:'Strikeouts ÷ plate appearances ending here'},
   {id:'bbhbp',  label:'BB+HBP%',  desc:'(Walks + HBP) ÷ plate appearances ending here'},
   {id:'wl11',   label:'1-1 W%',   desc:'Pitcher win% in ABs where this pitch was thrown at 1-1'},
+  {id:'er',     label:'ER',       desc:'Total earned runs scored on pitches in this cell'},
+  {id:'ur',     label:'UR',       desc:'Total unearned runs scored on pitches in this cell'},
 ];
 const AN_SIMPLE=['usage','strike','baa','whiff','barrel'];
 const AN_MATRIX_VIEWS=[
-  {id:'pt_count',   label:'Type×Count'},
-  {id:'pt_result',  label:'Type×Result'},
-  {id:'pt_zone',    label:'Type×Zone'},
-  {id:'count_pt',   label:'Count×Type'},
-  {id:'pt_hand',    label:'Type×Hand'},
-  {id:'pt_sit',     label:'Type×Sit'},
-  {id:'pt_contact', label:'Type×Contact'},
+  {id:'pt_count',       label:'Type×Count'},
+  {id:'pt_result',      label:'Type×Result'},
+  {id:'pt_zone',        label:'Type×Zone'},
+  {id:'count_pt',       label:'Count×Type'},
+  {id:'pt_hand',        label:'Type×Hand'},
+  {id:'pt_sit',         label:'Type×Sit'},
+  {id:'pt_contact',     label:'Type×Contact'},
+  {id:'runs_breakdown', label:'Runs Allowed'},
 ];
 
 // ── Field Zone Classification (calibrated from Field.png 1536×1024) ──
@@ -3961,9 +4062,9 @@ function _computeAnMatrix(pitches){
     if(!cells[key]) cells[key]={pt:p.pt,b:p.ballsBefore,s:p.strikesBefore,
       n:0,strikes:0,swings:0,swstr:0,fouls:0,
       bip:0,hits:0,xbh:0,hhbarrel:0,hhxbh:0,
-      terminal:0,kTerm:0,bbhbpTerm:0,abTerm:0,hitsTerm:0};
+      terminal:0,kTerm:0,bbhbpTerm:0,abTerm:0,hitsTerm:0,er:0,ur:0};
     const c=cells[key];
-    c.n++;
+    c.n++; c.er+=(p.er||0); c.ur+=(p.ur||0);
     if(p.isStrike) c.strikes++;
 
     const isBIP=p.rt==='bip', isHR=p.rt==='hr';
@@ -4031,12 +4132,107 @@ function showAnMatrixPicker(){
   showModal('Matrix View',body);
 }
 
+function _anGetRunBreakdown(){
+  const appIdName={};
+  S.games.forEach(g=>(g.pitchers||[]).forEach(gp=>{appIdName[gp.appId]=gp.name;}));
+  const allPitches=_anGetPitches();
+  const pitcherPitches=allPitches.filter(p=>!_anFilter.pitcher.length||_anFilter.pitcher.includes(appIdName[p.appId]));
+
+  let s3ER=0,s3UR=0;
+  const via={};
+  pitcherPitches.forEach(p=>{
+    s3ER+=(p.er||0); s3UR+=(p.ur||0);
+    (p.scoredRunners||[]).forEach(r=>{
+      const k=r.reachedVia||'other';
+      via[k]=(via[k]||0)+1;
+    });
+  });
+
+  const gameSrc=_anFilter.games.length?S.games.filter(g=>_anFilter.games.includes(g.id)):S.games;
+  let feER=0,feUR=0;
+  const feHow={};
+  gameSrc.forEach(g=>{
+    (g.events||[]).filter(e=>e.type==='runScored'&&(!_anFilter.pitcher.length||_anFilter.pitcher.includes(appIdName[e.runner?.pitcherAppId])))
+      .forEach(e=>{
+        if(e.earned)feER++;else feUR++;
+        const k=e.runner?.reachedVia||'other';
+        via[k]=(via[k]||0)+1;
+        const h=e.how||'play';
+        feHow[h]=(feHow[h]||0)+1;
+      });
+  });
+
+  const totalER=s3ER+feER, totalUR=s3UR+feUR;
+  const viaTotal=Object.values(via).reduce((a,v)=>a+v,0);
+  return{totalER,totalUR,total:totalER+totalUR,via,viaTotal,feHow,feER,feUR,s3ER,s3UR};
+}
+
+function _renderRunsBreakdown(){
+  const d=_anGetRunBreakdown();
+  if(d.total===0) return `<div style="text-align:center;padding:48px 20px;color:var(--text2);font-size:14px;">No runs allowed in this scope.</div>`;
+
+  const header=`<div style="display:flex;gap:10px;margin-bottom:20px;">
+    <div style="flex:1;background:var(--bg3);border-radius:var(--rsm);padding:14px 8px;text-align:center;">
+      <div style="font-size:30px;font-weight:800;color:var(--red);">${d.totalER}</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:3px;">Earned</div>
+    </div>
+    <div style="flex:1;background:var(--bg3);border-radius:var(--rsm);padding:14px 8px;text-align:center;">
+      <div style="font-size:30px;font-weight:800;color:var(--orange);">${d.totalUR}</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:3px;">Unearned</div>
+    </div>
+    <div style="flex:1;background:var(--bg3);border-radius:var(--rsm);padding:14px 8px;text-align:center;">
+      <div style="font-size:30px;font-weight:800;color:var(--text);">${d.total}</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:3px;">Total</div>
+    </div>
+  </div>`;
+
+  let viaHTML='';
+  if(d.viaTotal>0){
+    const bbCount=(d.via.bb||0)+(d.via.ibb||0);
+    let insight='';
+    if(d.totalER>0&&bbCount>0){
+      const pct=Math.round(bbCount/d.totalER*100);
+      insight=`<div style="font-size:12px;color:var(--accent);background:rgba(67,113,203,0.1);border-radius:var(--rsm);padding:10px 12px;margin-bottom:10px;">${bbCount} of ${d.totalER} earned run${d.totalER!==1?'s':''} reached via walk (${pct}%)</div>`;
+    }
+    const rows=[
+      ['Walk / IBB',(d.via.bb||0)+(d.via.ibb||0)],
+      ['Hit',       d.via.hit||0],
+      ['HBP',       d.via.hbp||0],
+      ['Error / PB',(d.via.error||0)+(d.via.pb||0)+(d.via.other||0)],
+    ].filter(([,n])=>n>0).map(([l,n])=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border);">
+      <div style="font-size:13px;color:var(--text2);">Via ${l}</div>
+      <div style="font-size:14px;font-weight:700;">${n}</div>
+    </div>`).join('');
+    const incomplete=d.viaTotal<d.total;
+    const note=incomplete?`<div style="font-size:10px;color:var(--text3);margin-top:6px;">Reach data for ${d.viaTotal} of ${d.total} runs — older records may be incomplete</div>`:'';
+    viaHTML=`<div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">How Runners Reached</div>${insight}${rows}${note}`;
+  } else if(d.total>0){
+    viaHTML=`<div style="font-size:12px;color:var(--text3);padding:10px 0;">Reach attribution requires runs logged with the current runner tracking system.</div>`;
+  }
+
+  let feHTML='';
+  const feTotal=d.feER+d.feUR;
+  if(feTotal>0){
+    const howLabels={wp:'Wild Pitch',pb:'Passed Ball',sb:'Stolen Base / Advance',balk:'Balk',ibb_fe:'IBB (Squeeze)',play:'Play',pickoff:'Pickoff'};
+    const feRows=Object.entries(d.feHow).sort((a,b)=>b[1]-a[1]).map(([h,n])=>`<div style="display:flex;justify-content:space-between;font-size:12px;padding:7px 0;border-bottom:1px solid var(--border);">
+      <div style="color:var(--text2);">${howLabels[h]||h}</div>
+      <div style="font-weight:700;">${n}</div>
+    </div>`).join('');
+    feHTML=`<div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin:18px 0 8px;">Field Event Runs (${feTotal})</div>${feRows}`;
+  }
+
+  const hasPitchFilters=_anFilter.hand!=='both'||_anFilter.sit!=='all'||_anFilter.trip!=='all'||_anFilter.loc!=='all'||_anFilter.zone!=='all'||_anFilter.bipZone!=='all';
+  const filterNote=hasPitchFilters?`<div style="margin-top:10px;font-size:10px;color:var(--accent);">Pitch-level filters active — they apply to AB-result runs only, not field-event runs</div>`:`<div style="margin-top:10px;font-size:10px;color:var(--text3);">Field-event runs (WP/PB/SB/Balk) filtered by game and pitcher only</div>`;
+
+  return `${header}${viaHTML}${feHTML}${filterNote}`;
+}
+
 function _computeGenMatrix(pitches,rowFn,colFn,rowFilterFn,colMatchFns){
   const cells={},rowTotals={};
   const accum=(row,col,p)=>{
     const key=`${row}_${col}`;
-    if(!cells[key]) cells[key]={row,col,n:0,strikes:0,swings:0,swstr:0,fouls:0,bip:0,hits:0,xbh:0,hhbarrel:0,hhxbh:0,terminal:0,kTerm:0,bbhbpTerm:0,abTerm:0,hitsTerm:0};
-    const c=cells[key]; c.n++;
+    if(!cells[key]) cells[key]={row,col,n:0,strikes:0,swings:0,swstr:0,fouls:0,bip:0,hits:0,xbh:0,hhbarrel:0,hhxbh:0,terminal:0,kTerm:0,bbhbpTerm:0,abTerm:0,hitsTerm:0,er:0,ur:0};
+    const c=cells[key]; c.n++; c.er+=(p.er||0); c.ur+=(p.ur||0);
     if(p.isStrike) c.strikes++;
     const isBIP=p.rt==='bip',isHR=p.rt==='hr';
     const isSwingK=p.rt==='k'||p.rt==='d3k';
@@ -4256,6 +4452,31 @@ function showAnGenCell(matrixId,rowId,colId){
     }).filter(Boolean).join('');
     if(bipRows) bipSection=`<div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin:14px 0 6px;">BIP Breakdown</div>${bipRows}`;
   }
+  let runsSection='';
+  const cellAllPs=pitches.filter(p=>p.pt&&def.rowFn(p)===rowId&&(!colMatch||colMatch(p)));
+  const erTotal=cellAllPs.reduce((a,p)=>a+(p.er||0),0);
+  const urTotal=cellAllPs.reduce((a,p)=>a+(p.ur||0),0);
+  if(erTotal>0||urTotal>0){
+    const hasSR=cellAllPs.some(p=>p.scoredRunners?.length);
+    let rvRows='';
+    if(hasSR){
+      const rv={hit:0,bb:0,ibb:0,hbp:0,error:0,other:0};
+      cellAllPs.forEach(p=>(p.scoredRunners||[]).forEach(r=>{
+        const k=r.reachedVia||'other';
+        if(rv.hasOwnProperty(k))rv[k]++;else rv.other++;
+      }));
+      const bbTotal=rv.bb+rv.ibb;
+      [['Hit',rv.hit],['Walk / IBB',bbTotal],['HBP',rv.hbp],['Error / PB',rv.error+rv.other]].filter(([,n])=>n>0)
+        .forEach(([l,n])=>{rvRows+=`<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px solid var(--border);"><div style="color:var(--text2);">Via ${l}</div><div style="font-weight:700;">${n}</div></div>`;});
+    } else {
+      rvRows=`<div style="font-size:11px;color:var(--text3);margin-top:4px;">Detail available on newer records</div>`;
+    }
+    runsSection=`<div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin:14px 0 6px;">Runs Scored — How Runners Reached</div>
+      <div style="display:flex;gap:16px;font-size:13px;margin-bottom:8px;">
+        <div><span style="color:var(--text3);">ER:</span> <span style="font-weight:700;color:var(--red);">${erTotal}</span></div>
+        <div><span style="color:var(--text3);">UR:</span> <span style="font-weight:700;color:var(--orange);">${urTotal}</span></div>
+      </div>${rvRows}`;
+  }
   let viewBtn='';
   if(isCountPt){
     const[b,s]=rowId.split('_');
@@ -4265,7 +4486,7 @@ function showAnGenCell(matrixId,rowId,colId){
   }
   showModal(`<span style="font-size:13px;">${rowLabel} · ${colLabel}</span>`,`
     <div style="font-size:12px;color:var(--text2);margin-bottom:10px;">n = ${c.n} pitches</div>
-    ${nWarn}${metricRows}${bipSection}${viewBtn}
+    ${nWarn}${metricRows}${bipSection}${runsSection}${viewBtn}
   `);
 }
 
@@ -4292,13 +4513,15 @@ function _anVal(c,mid){
     case 'k':      return c.terminal?c.kTerm/c.terminal:null;
     case 'bbhbp':  return c.terminal?c.bbhbpTerm/c.terminal:null;
     case 'wl11':   return (c.b===1&&c.s===1&&c.w11?.total)?c.w11.wins/c.w11.total:null;
+    case 'er':     return c.er;
+    case 'ur':     return c.ur;
   }
 }
 
 function _anFmt(val,mid){
   if(val===null||val===undefined) return '—';
   if(mid==='baa') return '.'+String(Math.round(val*1000)).padStart(3,'0');
-  if(mid==='hhxbh') return String(val);
+  if(mid==='hhxbh'||mid==='er'||mid==='ur') return String(val);
   return Math.round(val*100)+'%';
 }
 
@@ -4315,7 +4538,8 @@ function _anColor(val,mid){
     bbhbp:  {hi:0.15,lo:0.04,hg:false},
     wl11:   {hi:0.62,lo:0.44,hg:true},
   };
-  if(mid==='hhxbh') return val>0?'color:var(--red)':'';
+  if(mid==='hhxbh'||mid==='er') return val>0?'color:var(--red)':'';
+  if(mid==='ur') return val>0?'color:var(--orange)':'';
   const t=T[mid]; if(!t) return '';
   if(t.hg){ if(val>=t.hi) return 'color:var(--green)'; if(val<=t.lo) return 'color:var(--red)'; }
   else     { if(val>=t.hi) return 'color:var(--red)';  if(val<=t.lo) return 'color:var(--green)'; }
@@ -4371,6 +4595,11 @@ function renderAnalytics(){
     <button onclick="toggleAnDeep()" style="padding:5px 10px;font-size:11px;font-weight:600;border-radius:20px;border:1.5px solid var(--border2);background:none;color:var(--text3);cursor:pointer;margin-left:auto;flex-shrink:0;">${_anDeep?'Simple ←':'Deep Dive →'}</button>
   </div>
   <div style="font-size:11px;color:var(--text3);margin-bottom:10px;">${activeMeta.desc}</div>`;
+
+  if(_anMatrixView==='runs_breakdown'){
+    document.getElementById('an-body').innerHTML=`<div style="padding:16px;">${filtersHTML}${_renderRunsBreakdown()}</div>`;
+    return;
+  }
 
   if(!pitches.length){
     document.getElementById('an-body').innerHTML=`<div style="padding:16px;">${filtersHTML}${chipsHTML}<div style="text-align:center;padding:40px 20px;color:var(--text2);font-size:14px;">No pitches match the current filters.</div></div>`;
@@ -4547,6 +4776,233 @@ function showZoneKey(){
     <div style="margin-top:8px;">${legend}</div>
     <div style="margin-top:10px;font-size:11px;color:var(--text3);">Zones follow Baseball Savant convention. "In/Away" based on catcher's perspective — flip mentally for LHB.</div>
   `);
+}
+
+// ══════════════════════════════════════════
+// STATS SCREEN
+// ══════════════════════════════════════════
+let _stFromScreen='home', _stGames=[], _stSort={col:null,dir:'desc'};
+
+function showStats(from='home'){ _stFromScreen=from; _stGames=[]; _stSort={col:null,dir:'desc'}; go('stats'); }
+function statsBack(){ go(_stFromScreen); }
+
+function _stGetGames(){ return _stGames.length?S.games.filter(g=>_stGames.includes(g.id)):S.games; }
+
+function _stScopeLabel(){
+  if(!_stGames.length) return 'Season — All Games';
+  if(_stGames.length===1){
+    const g=S.games.find(g=>g.id===_stGames[0]);
+    if(g) return `${g.ha==='home'?'vs.':'@'} ${g.opp||'Unknown'}${g.date?' · '+g.date:''}`;
+    return '1 Game';
+  }
+  return `${_stGames.length} Games`;
+}
+
+function _stGamePickerBody(){
+  const row=(id,label,sub,checked)=>`<div onclick="toggleStGame('${id}')" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;-webkit-tap-highlight-color:transparent;">
+    <div><div style="font-size:14px;font-weight:600;color:var(--text);">${label}</div>${sub?`<div style="font-size:11px;color:var(--text3);margin-top:2px;">${sub}</div>`:''}</div>
+    <span style="font-size:18px;color:var(--accent);width:20px;text-align:right;">${checked?'✓':''}</span>
+  </div>`;
+  const sorted=S.games.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  return row('all','Season — All Games','',!_stGames.length)+sorted.map(g=>{
+    const ha=g.ha==='home'?'vs.':'@';
+    const w=g.ourScore!=null&&g.ourScore>g.oppScore,l=g.ourScore!=null&&g.ourScore<g.oppScore;
+    const score=g.ourScore!=null?`${w?'W':l?'L':'T'} ${g.ourScore}–${g.oppScore}`:'';
+    return row(g.id,`${ha} ${g.opp||'Unknown'}`,[g.date||'',score].filter(Boolean).join(' · '),_stGames.includes(g.id));
+  }).join('');
+}
+function showStGamePicker(){ showModal('Select Scope',_stGamePickerBody()); }
+function toggleStGame(id){
+  if(id==='all'){ _stGames=[]; }
+  else if(!_stGames.length){ _stGames=[id]; }
+  else{ const i=_stGames.indexOf(id); if(i>=0)_stGames.splice(i,1);else _stGames.push(id); }
+  document.getElementById('modal-body').innerHTML=_stGamePickerBody();
+  renderStats();
+}
+
+function _stAgg(games){
+  const byName={};
+  games.forEach(g=>{
+    (g.pitchers||[]).forEach(gp=>{
+      const key=gp.name||'Unknown';
+      if(!byName[key]) byName[key]={name:key,num:gp.num||'',throws:gp.throws||'R',po:0,pc:0,k:0,bb:0,hbp:0,h:0,hr:0,er:0,ur:0,apps:[]};
+      const d=byName[key];
+      d.po+=(gp.po||0); d.pc+=(gp.pc||0); d.k+=(gp.k||0); d.bb+=(gp.bb||0);
+      d.hbp+=(gp.hbp||0); d.h+=(gp.h||0); d.hr+=(gp.hr||0); d.er+=(gp.er||0); d.ur+=(gp.ur||0);
+      d.apps.push({gameId:g.id,appId:gp.appId});
+    });
+  });
+  return Object.values(byName).filter(d=>d.pc>0);
+}
+function _stIP(po){ return Math.floor(po/3)+'.'+(po%3); }
+function _stERA(d){ return d.po>0?((d.er*27)/d.po).toFixed(2):'—'; }
+function _stWHIP(d){ return d.po>0?((d.bb+d.h)/(d.po/3)).toFixed(2):'—'; }
+function _stSortNum(d,col){
+  switch(col){
+    case 'pc': return d.pc; case 'ip': return d.po; case 'k': return d.k;
+    case 'bb': return d.bb; case 'h': return d.h; case 'hr': return d.hr;
+    case 'r': return d.er+d.ur; case 'er': return d.er;
+    case 'era': return d.po>0?(d.er*27)/d.po:9999;
+    case 'whip': return d.po>0?(d.bb+d.h)/(d.po/3):9999;
+    default: return 0;
+  }
+}
+function stSortBy(col){
+  if(_stSort.col===col) _stSort.dir=_stSort.dir==='desc'?'asc':'desc';
+  else { _stSort.col=col; _stSort.dir='desc'; }
+  renderStats();
+}
+
+function renderStats(){
+  const games=_stGetGames();
+  const pitchers=_stAgg(games);
+  const scopeBtn=`<button onclick="showStGamePicker()" style="width:100%;padding:9px 12px;background:var(--bg3);border:1.5px solid var(--accent);border-radius:var(--rsm);font-size:12px;font-weight:700;color:var(--text);cursor:pointer;display:flex;align-items:center;gap:6px;margin-bottom:16px;-webkit-tap-highlight-color:transparent;">
+    <span style="font-size:10px;font-weight:700;color:var(--text3);flex-shrink:0;">Scope</span>
+    <span style="flex:1;text-align:left;">${_stScopeLabel()}</span>
+    <span style="color:var(--text3);font-size:10px;">▾</span>
+  </button>`;
+  if(!pitchers.length){
+    document.getElementById('st-body').innerHTML=`<div style="padding:16px;">${scopeBtn}<div style="text-align:center;padding:40px 20px;color:var(--text2);font-size:14px;">No pitching data in this scope.</div></div>`;
+    return;
+  }
+  let sorted=pitchers.slice();
+  if(_stSort.col) sorted.sort((a,b)=>(_stSort.dir==='desc'?1:-1)*(_stSortNum(b,_stSort.col)-_stSortNum(a,_stSort.col)));
+  const tot={pc:0,po:0,k:0,bb:0,hbp:0,h:0,hr:0,er:0,ur:0};
+  pitchers.forEach(d=>{Object.keys(tot).forEach(k=>{tot[k]+=(d[k]||0);});});
+  const cols=[
+    {id:'pc',label:'P'},{id:'ip',label:'IP'},{id:'k',label:'K'},{id:'bb',label:'BB'},
+    {id:'hbp',label:'HBP'},{id:'h',label:'H'},{id:'hr',label:'HR'},
+    {id:'r',label:'R'},{id:'er',label:'ER'},{id:'era',label:'ERA'},{id:'whip',label:'WHIP'},
+  ];
+  const drillable=new Set(['k','bb','h','hr','hbp']);
+  const thHtml=cols.map(c=>`<th onclick="stSortBy('${c.id}')" class="${_stSort.col===c.id?'st-sort-active':''}">${c.label}${_stSort.col===c.id?' '+(_stSort.dir==='desc'?'↓':'↑'):''}</th>`).join('');
+  const cv=(d,col)=>{
+    switch(col){
+      case 'pc': return d.pc; case 'ip': return _stIP(d.po); case 'k': return d.k;
+      case 'bb': return d.bb; case 'hbp': return d.hbp; case 'h': return d.h;
+      case 'hr': return d.hr; case 'r': return d.er+d.ur; case 'er': return d.er;
+      case 'era': return _stERA(d); case 'whip': return _stWHIP(d); default: return '—';
+    }
+  };
+  const dataRows=sorted.map(d=>`<tr>
+    <td><div style="font-size:12px;font-weight:700;color:#111;">${_pShortName(d.name)}</div><div style="font-size:10px;color:#777;">#${d.num} ${d.throws}</div></td>
+    ${cols.map(c=>{const v=cv(d,c.id);const can=drillable.has(c.id)&&typeof v==='number'&&v>0;return `<td>${can?`<span class="stat-tap" onclick="showStatDrill('${d.name.replace(/'/g,"\\'")}','${c.id}')">${v}</span>`:v}</td>`;}).join('')}
+  </tr>`).join('');
+  const totRow=`<tr class="stat-totals"><td style="font-size:11px;color:#555;">Totals</td>${cols.map(c=>{switch(c.id){case 'pc':return`<td>${tot.pc}</td>`;case 'ip':return`<td>${_stIP(tot.po)}</td>`;case 'k':return`<td>${tot.k}</td>`;case 'bb':return`<td>${tot.bb}</td>`;case 'hbp':return`<td>${tot.hbp}</td>`;case 'h':return`<td>${tot.h}</td>`;case 'hr':return`<td>${tot.hr}</td>`;case 'r':return`<td>${tot.er+tot.ur}</td>`;case 'er':return`<td>${tot.er}</td>`;case 'era':return`<td>${tot.po>0?((tot.er*27)/tot.po).toFixed(2):'—'}</td>`;case 'whip':return`<td>${tot.po>0?((tot.bb+tot.h)/(tot.po/3)).toFixed(2):'—'}</td>`;default:return'<td>—</td>';}}).join('')}</tr>`;
+  document.getElementById('st-body').innerHTML=`<div style="padding:16px 0 0;">
+    <div style="padding:0 16px;">${scopeBtn}</div>
+    <div class="stat-table-wrap">
+      <table class="stat-table">
+        <thead><tr><th style="text-align:left;padding-left:12px;cursor:default;">Pitcher</th>${thHtml}</tr></thead>
+        <tbody>${dataRows}${totRow}</tbody>
+      </table>
+    </div>
+    <div style="padding:10px 16px;font-size:10px;color:var(--text3);text-align:center;">Tap K · BB · HBP · H · HR to view sequences</div>
+  </div>`;
+}
+
+function showStatDrill(pitcherName, statId){
+  const games=_stGetGames();
+  const pitcherAppIds=new Set();
+  games.forEach(g=>(g.pitchers||[]).forEach(gp=>{ if(gp.name===pitcherName) pitcherAppIds.add(gp.appId); }));
+  const allPitches=games.flatMap(g=>(g.pitches||[]).filter(p=>pitcherAppIds.has(p.appId)));
+  const statLabels={k:'Strikeouts',bb:'Walks',h:'Hits',hr:'Home Runs',hbp:'Hit By Pitch'};
+  const statLabel=statLabels[statId]||statId;
+  let termPs;
+  switch(statId){
+    case 'k':  termPs=allPitches.filter(p=>p.isTerm&&(p.rt==='k'||p.rt==='kc'||p.rt==='d3k')); break;
+    case 'bb': termPs=allPitches.filter(p=>p.isTerm&&(p.rt==='bb'||p.rt==='ibb')); break;
+    case 'h':  termPs=allPitches.filter(p=>p.isTerm&&(p.bipOut==='hit'||p.rt==='hr')); break;
+    case 'hr': termPs=allPitches.filter(p=>p.isTerm&&p.rt==='hr'); break;
+    case 'hbp':termPs=allPitches.filter(p=>p.isTerm&&p.rt==='hbp'); break;
+    default:   termPs=[];
+  }
+  if(!termPs.length){ showModal(statLabel,'<div style="padding:24px;text-align:center;color:var(--text2);">No data available.</div>'); return; }
+  const abNums=[...new Set(termPs.map(p=>p.abNum))];
+  const abGroups={};
+  allPitches.forEach(p=>{ if(abNums.includes(p.abNum)){ if(!abGroups[p.abNum])abGroups[p.abNum]=[]; abGroups[p.abNum].push(p); } });
+  const bipPs=['h','hr'].includes(statId)?termPs.filter(p=>p.sx!=null&&p.sy!=null):[];
+  const sprayHTML=bipPs.length?`<div style="margin-bottom:14px;">
+    <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">${statLabel} — Spray (${bipPs.length})</div>
+    <canvas id="drill-spray-cv" width="320" height="160" style="display:block;width:100%;aspect-ratio:2/1;border-radius:var(--rsm);background:var(--bg3);"></canvas>
+  </div>`:'';
+  const ptCol=pt=>({FB:'#e85555','2S':'#e8a455',SI:'#e8a455',FC:'#f5c842',SL:'#55a8e8',SV:'#558de8',CB:'#5568e8',CH:'#55e8a0',FS:'#55d4e8',FO:'#55e8d4',KN:'#a855e8',EP:'#e855d4',OT:'#9090a8'}[pt]||'#9090a8');
+  const rtLbl=p=>({ball:'Ball',strike:'Strike',foul:'Foul',swstr:'Miss',k:'K',kc:'KC',d3k:'K✓',bb:'BB',ibb:'IBB',hbp:'HBP',hr:'HR',bip:'BIP',oob:'OOB',other:'—'}[p.rt]||p.rt||'—');
+  const abCards=abNums.sort((a,b)=>a-b).map(abNum=>{
+    const abPs=(abGroups[abNum]||[]).sort((a,b)=>a.abPitchNum-b.abPitchNum);
+    const inn=abPs[0]?.inning||'?', half=abPs[0]?.half==='top'?'▲':'▼';
+    const bName=abPs[0]?.bName||'', bHand=abPs[0]?.bHand||'R';
+    const seq=abPs.map(p=>`<span style="display:inline-flex;align-items:center;gap:2px;margin:2px 3px 2px 0;padding:2px 5px;background:rgba(255,255,255,0.06);border-radius:3px;font-size:11px;">
+      <span style="color:${ptCol(p.pt)};font-weight:700;">${p.pt||'?'}</span>${p.velo?`<span style="color:var(--text3);font-size:10px;">${p.velo}</span>`:''}
+      <span style="color:${p.isTerm?'var(--text)':'var(--text3)'};">${rtLbl(p)}</span>
+    </span>`).join('');
+    return `<div style="background:var(--bg3);border-radius:var(--rsm);padding:10px 12px;margin-bottom:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;">
+        <div style="font-size:12px;font-weight:700;color:var(--text);">${half}${inn}  ${bHand}HH${bName?' · '+bName:''}</div>
+        <div style="font-size:10px;color:var(--text3);">${abPs.length}p</div>
+      </div>
+      <div style="flex-wrap:wrap;margin-bottom:8px;line-height:1.6;">${seq}</div>
+      <canvas id="dz-${abNum}" width="160" height="200" style="display:block;width:auto;height:160px;margin:0 auto;"></canvas>
+    </div>`;
+  }).join('');
+  showModal(`<span style="font-size:13px;">${_pShortName(pitcherName)} · ${statLabel} (${termPs.length})</span>`,`${sprayHTML}${abCards}`);
+  requestAnimationFrame(()=>{
+    if(bipPs.length){
+      const cv=document.getElementById('drill-spray-cv');
+      if(cv) _renderDrillSpray(cv,bipPs);
+    }
+    abNums.forEach(abNum=>{
+      const cv=document.getElementById(`dz-${abNum}`);
+      if(cv) _renderDrillZone(cv,(abGroups[abNum]||[]).sort((a,b)=>a.abPitchNum-b.abPitchNum));
+    });
+  });
+}
+
+function _renderDrillSpray(cv,pitches){
+  const W=cv.width, H=cv.height;
+  const ctx=cv.getContext('2d');
+  ctx.clearRect(0,0,W,H);
+  if(fieldImg&&fieldImg.complete&&fieldImg.width){
+    const scale=Math.min(W/fieldImg.width,H/fieldImg.height);
+    const dw=fieldImg.width*scale, dh=fieldImg.height*scale;
+    const bx=(W-dw)/2, by=(H-dh)/2;
+    ctx.drawImage(fieldImg,bx,by,dw,dh);
+    pitches.forEach(p=>{
+      const x=bx+p.sx*dw, y=by+p.sy*dh;
+      const isHR=p.rt==='hr';
+      let col=p.bipType==='GB'?'#4a9eff':p.bipType==='LD'?'#f0873a':(p.bipType==='FLY'||isHR)?'#e85555':'#9090a8';
+      ctx.beginPath(); ctx.arc(x,y,isHR?6:4,0,Math.PI*2);
+      ctx.fillStyle=col; ctx.strokeStyle=isHR?'#f5c842':'rgba(0,0,0,0.5)'; ctx.lineWidth=isHR?2:1.2;
+      ctx.fill(); ctx.stroke();
+      if(isHR){ ctx.fillStyle='#f5c842'; ctx.font='bold 6px -apple-system'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('HR',x,y); }
+    });
+  }
+}
+
+function _renderDrillZone(cv,pitches){
+  const W=cv.width, H=cv.height;
+  const ctx=cv.getContext('2d');
+  ctx.clearRect(0,0,W,H);
+  const szX=W*0.2, szY=8, szW=W*0.6, szH=H*0.72;
+  ctx.strokeStyle='rgba(255,255,255,0.35)'; ctx.lineWidth=1.5; ctx.strokeRect(szX,szY,szW,szH);
+  ctx.strokeStyle='rgba(255,255,255,0.1)'; ctx.lineWidth=0.8;
+  [1,2].forEach(i=>{
+    const x=szX+szW/3*i; ctx.beginPath(); ctx.moveTo(x,szY); ctx.lineTo(x,szY+szH); ctx.stroke();
+    const y=szY+szH/3*i; ctx.beginPath(); ctx.moveTo(szX,y); ctx.lineTo(szX+szW,y); ctx.stroke();
+  });
+  const px=W/2, py=szY+szH+10;
+  ctx.fillStyle='rgba(255,255,255,0.35)'; ctx.beginPath(); ctx.arc(px,py,3,0,Math.PI*2); ctx.fill();
+  const ptCol=pt=>({FB:'#e85555','2S':'#e8a455',SI:'#e8a455',FC:'#f5c842',SL:'#55a8e8',SV:'#558de8',CB:'#5568e8',CH:'#55e8a0',FS:'#55d4e8',FO:'#55e8d4',KN:'#a855e8',EP:'#e855d4',OT:'#9090a8'}[pt]||'#9090a8');
+  pitches.forEach((p,i)=>{
+    if(p.zx==null||p.zy==null) return;
+    const x=szX+p.zx*szW, y=szY+p.zy*szH;
+    const col=ptCol(p.pt);
+    ctx.beginPath(); ctx.arc(x,y,5,0,Math.PI*2);
+    ctx.fillStyle=p.isTerm?col:col+'55'; ctx.strokeStyle='rgba(0,0,0,0.4)'; ctx.lineWidth=0.8;
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle='rgba(255,255,255,0.9)'; ctx.font='bold 7px -apple-system';
+    ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(i+1,x,y);
+  });
 }
 
 // ══════════════════════════════════════════
