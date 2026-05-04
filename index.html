@@ -231,9 +231,9 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 .field-event-btn:active { background: var(--bg4); }
 
 /* Hamburger drawer */
-.ham-ov { display:none; position:fixed; inset:0; z-index:200; flex-direction:row; }
+.ham-ov { display:none; position:fixed; inset:0; z-index:200; flex-direction:row-reverse; }
 .ham-ov.on { display:flex; }
-.ham-panel { width:240px; background:var(--bg2); height:100%; display:flex; flex-direction:column; border-right:1px solid var(--border); overflow-y:auto; flex-shrink:0; }
+.ham-panel { width:240px; background:var(--bg2); height:100%; display:flex; flex-direction:column; border-left:1px solid var(--border); overflow-y:auto; flex-shrink:0; }
 .ham-dim { flex:1; background:rgba(0,0,0,0.55); }
 .ham-hdr { padding:20px 16px 12px; border-bottom:1px solid var(--border); }
 .ham-app-name { font-size:17px; font-weight:800; color:var(--text); }
@@ -565,14 +565,13 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
   <!-- Top bar -->
   <div class="gbar">
     <div style="display:flex;align-items:center;gap:6px;flex:1.2;min-width:0;">
-      <div class="menu-btn" onclick="showHam();event.stopPropagation();" style="font-size:18px;flex-shrink:0;">☰</div>
       <div class="gbar-left" onclick="showPitcherPanel()" style="min-width:0;flex:1;">
         <div class="pitcher-name-line" id="g-pitcher-name">— · 0 pitches</div>
         <div class="pitcher-stat-line" id="g-pitcher-stats">St%: —  K: 0  BB: 0  H: 0</div>
       </div>
     </div>
     <div class="gbar-center">
-      <div class="score-row">
+      <div class="score-row" onclick="showEditScore()" style="cursor:pointer;">
         <div class="score-line" id="g-score">0 – 0</div>
         <div class="inning-block">
           <span id="g-half">▲</span>
@@ -583,8 +582,8 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
       <div class="game-info-line" id="g-info"></div>
     </div>
     <div class="gbar-right">
-      <div class="menu-btn" onclick="showGameMenu()">⋯</div>
       <div class="menu-btn" onclick="undoLast()" title="Edit last pitch" style="font-size:14px;">↩</div>
+      <div class="menu-btn" onclick="showHam();event.stopPropagation();" style="font-size:18px;">☰</div>
     </div>
   </div>
 
@@ -934,8 +933,8 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 <!-- ══ HAMBURGER MENU ══ -->
 <div class="ham-ov" id="ham-ov">
   <div class="ham-panel">
-    <div class="ham-hdr">
-      <div class="ham-app-name">Cipher</div>
+    <div class="ham-hdr" style="padding:0;">
+      <img src="Header.jpeg" alt="Cipher" style="display:block;width:100%;">
     </div>
     <div class="ham-item" onclick="navTo('home')">
       <span class="ham-item-label">Home</span>
@@ -958,6 +957,11 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
     </div>
     <div class="ham-item" onclick="showSettings()">
       <span class="ham-item-label">Settings</span>
+    </div>
+    <div style="margin-top:auto;border-top:1px solid var(--border);">
+      <div class="ham-item" onclick="exportCurrentGame()">
+        <span class="ham-item-label" style="color:var(--text3);">Export Game</span>
+      </div>
     </div>
   </div>
   <div class="ham-dim" onclick="hideHam()"></div>
@@ -1031,6 +1035,7 @@ function go(name){
 }
 function showHam(){ document.getElementById('ham-ov').classList.add('on'); }
 function hideHam(){ document.getElementById('ham-ov').classList.remove('on'); }
+function exportCurrentGame(){ hideHam(); if(G) exportGame(G.id); }
 function navTo(screen){
   hideHam();
   if(screen==='game'){ go(G?'game':'home'); return; }
@@ -1756,7 +1761,7 @@ function renderGame(){
   // pitcher line
   const pc=p?p.pc:0, st=p?p.st:0;
   const sp=pc?Math.round(st/pc*100):0;
-  if(p){const pColor=p.throws==='L'?'var(--accent)':'var(--red)';const pBg=p.throws==='L'?'rgba(74,158,255,0.18)':'rgba(232,85,85,0.18)';document.getElementById('g-pitcher-name').innerHTML=`<span style="display:inline-flex;align-items:center;gap:5px;width:100%;overflow:hidden;"><span style="width:18px;height:18px;border-radius:50%;background:${pBg};color:${pColor};font-size:9px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">${p.throws||'R'}</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">#${p.num||'—'} ${_pShortName(p.name)}</span><span style="font-size:13px;font-weight:800;flex-shrink:0;margin-left:4px;">P ${pc}</span></span>`;}else{document.getElementById('g-pitcher-name').textContent='—';}
+  if(p){const pColor=p.throws==='L'?'var(--accent)':'var(--red)';const pBg=p.throws==='L'?'rgba(74,158,255,0.18)':'rgba(232,85,85,0.18)';document.getElementById('g-pitcher-name').innerHTML=`<span style="display:inline-flex;align-items:center;gap:5px;width:100%;overflow:hidden;"><span style="width:18px;height:18px;border-radius:50%;background:${pBg};color:${pColor};font-size:9px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">${p.throws||'R'}</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">#${p.num||'—'} ${_pShortName(p.name)}</span><span style="font-size:13px;flex-shrink:0;margin-left:4px;"><span style="color:var(--text3);font-weight:500;">P</span><span style="font-weight:800;"> ${pc}</span></span></span>`;}else{document.getElementById('g-pitcher-name').textContent='—';}
   document.getElementById('g-pitcher-stats').textContent=`St%: ${sp}%  K: ${p?p.k:0}  BB: ${p?p.bb:0}  H: ${p?p.h:0}`;
 
   // score + info
@@ -3995,10 +4000,26 @@ function toggleTrackIntended(){
   G.trackIntended=!G.trackIntended;
   save(); showGameMenu();
 }
+function showEditScore(){
+  if(!G)return;
+  showModal('Edit Score',`
+    <div style="display:flex;gap:12px;margin-bottom:16px;">
+      <div style="flex:1;text-align:center;">
+        <div style="font-size:11px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Us</div>
+        <input type="number" id="es-ours" value="${G.ourScore||0}" min="0" style="width:100%;font-size:32px;font-weight:800;text-align:center;background:var(--bg3);border:1px solid var(--border);border-radius:var(--rsm);padding:12px 0;color:var(--text);">
+      </div>
+      <div style="flex:1;text-align:center;">
+        <div style="font-size:11px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">${G.opp||'Opp'}</div>
+        <input type="number" id="es-opps" value="${G.oppScore||0}" min="0" style="width:100%;font-size:32px;font-weight:800;text-align:center;background:var(--bg3);border:1px solid var(--border);border-radius:var(--rsm);padding:12px 0;color:var(--text);">
+      </div>
+    </div>
+    <button class="btn btn-primary btn-block" onclick="saveScores()">Save</button>
+  `);
+}
 function saveScores(){
   if(!G)return;
-  G.ourScore=parseInt(document.getElementById('gm-ours').value)||0;
-  G.oppScore=parseInt(document.getElementById('gm-opps').value)||0;
+  G.ourScore=parseInt(document.getElementById('es-ours').value)||0;
+  G.oppScore=parseInt(document.getElementById('es-opps').value)||0;
   save(); hideModal(); renderGame();
 }
 
