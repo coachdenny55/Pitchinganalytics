@@ -143,11 +143,36 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 
 /* HOME */
 #screen-home { overflow: hidden; background: #000; }
-.home-header { padding: 32px 24px 20px; text-align: center; }
-.home-header h1 { font-size: 34px; font-weight: 800; letter-spacing: -1px; }
-.home-header p { color: var(--text2); font-size: 15px; margin-top: 6px; }
-.home-actions { padding: 0 20px; display: flex; flex-direction: column; gap: 10px; }
-.game-list { flex: 1; overflow-y: auto; padding: 16px 20px; }
+.home-header-band { position: relative; flex-shrink: 0; background: #000; border-bottom: 1.5px solid rgba(74,158,255,0.18); }
+.home-header-band > img { display: block; width: 100%; }
+.home-gear-btn { position: absolute; top: 50%; right: 12px; transform: translateY(-50%); width: 33px; height: 33px; border-radius: 50%; background: rgba(10,10,15,0.72); border: 1px solid rgba(255,255,255,0.15); color: var(--text2); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.home-body-new { flex: 1; display: flex; flex-direction: column; padding: 14px 16px 20px; gap: 8px; overflow-y: auto; -webkit-overflow-scrolling: touch; background: #000; }
+.home-body-new::-webkit-scrollbar { display: none; }
+.outing-strip { background: var(--bg2); border: 1px solid var(--border2); border-radius: var(--r); padding: 15px 16px 14px; display: flex; flex-direction: column; gap: 12px; cursor: pointer; position: relative; overflow: hidden; }
+.outing-strip::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--accent), #7ab8ff); }
+.outing-top { display: flex; align-items: flex-start; justify-content: space-between; }
+.outing-left { display: flex; flex-direction: column; gap: 3px; }
+.outing-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 1.8px; text-transform: uppercase; color: var(--text3); }
+.outing-pitcher { font-size: 22px; font-weight: 700; color: var(--text); }
+.outing-meta { font-size: 12px; color: var(--text2); }
+.outing-right { display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
+.outing-stat { text-align: center; }
+.outing-stat-val { font-size: 17px; font-weight: 700; color: var(--text); line-height: 1; }
+.outing-stat-lbl { font-size: 9px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.7px; font-weight: 700; margin-top: 2px; }
+.outing-grade-lg { font-size: 40px; font-weight: 900; line-height: 1; }
+.home-btn-primary { width: 100%; padding: 18px 20px; background: var(--accent); border: none; border-radius: var(--r); color: #fff; font-size: 19px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; box-shadow: 0 0 24px rgba(74,158,255,0.2); text-align: center; transition: opacity 0.1s; }
+.home-btn-primary:active { opacity: 0.88; }
+.home-btn-sec { width: 100%; padding: 15px 16px; background: var(--bg2); border: 1px solid var(--border2); border-radius: var(--r); color: var(--text); font-size: 17px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: background 0.12s; }
+.home-btn-sec:active { background: var(--bg3); }
+.home-btn-sec-left { display: flex; flex-direction: column; gap: 3px; text-align: left; }
+.home-btn-sec-sub { font-size: 11px; font-weight: 400; color: var(--text3); text-transform: none; letter-spacing: 0; }
+.home-btn-sec-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.home-chevron { color: var(--text3); font-size: 22px; font-weight: 300; line-height: 1; }
+.home-badge { font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 20px; background: var(--bg3); color: var(--text3); border: 1px solid var(--border); }
+.home-bottom-bar { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--border2); flex-shrink: 0; background: #000; }
+.home-bottom-btn { padding: 18px 16px; background: #000; border: none; border-right: 1px solid var(--border2); color: var(--text); font-size: 15px; font-weight: 700; letter-spacing: 1.6px; text-transform: uppercase; cursor: pointer; text-align: center; transition: background 0.1s; }
+.home-bottom-btn:last-child { border-right: none; }
+.home-bottom-btn:active { background: var(--bg2); }
 .game-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); padding: 16px; margin-bottom: 10px; cursor: pointer; position: relative; }
 .game-card:active { background: var(--bg3); }
 .game-card-menu { position: absolute; top: 10px; right: 10px; width: 28px; height: 28px; border-radius: 50%; background: rgba(255,255,255,0.08); border: none; color: var(--text2); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.1s; }
@@ -391,26 +416,19 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 
 <!-- ══ HOME ══ -->
 <div id="screen-home" class="screen active">
-  <div class="home-header">
-    <img src="Header.jpeg" alt="Cipher" style="max-width:260px;width:80%;display:block;margin:0 auto;">
+  <div class="home-header-band">
+    <img src="Header.jpeg" alt="Cipher">
+    <button class="home-gear-btn" onclick="showSettings()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+    </button>
   </div>
-  <div class="home-actions">
-    <button type="button" class="btn btn-primary" style="font-size:18px;padding:16px;" onclick="go('new-game')">+ New Game</button>
-    <div class="btn-row">
-      <button type="button" class="btn btn-block" onclick="go('my-team')">My Team</button>
-      <button type="button" class="btn btn-block" onclick="doBackup()">Backup Data</button>
-    </div>
-    <div class="btn-row" style="margin-top:0;">
-      <button type="button" class="btn btn-block" onclick="showSettings()" style="color:var(--text3);font-size:13px;">⚙ Settings</button>
-    </div>
-    <!-- DEV ONLY — remove before release -->
-    <div style="display:flex;gap:6px;">
-      <button type="button" onclick="devLoadGame()" style="flex:1;padding:8px;background:rgba(255,200,0,0.07);border:1px dashed rgba(255,200,0,0.25);border-radius:var(--rsm);color:rgba(255,200,0,0.4);font-size:12px;cursor:pointer;">⚙ Test Game</button>
-      <button type="button" onclick="devSimGame()" style="flex:1;padding:8px;background:rgba(255,200,0,0.07);border:1px dashed rgba(255,200,0,0.25);border-radius:var(--rsm);color:rgba(255,200,0,0.4);font-size:12px;cursor:pointer;">⚙ Simulate Game</button>
-    </div>
-  </div>
-  <div class="game-list" id="game-list">
-    <div class="empty">No games yet.<br>Tap New Game to start.</div>
+  <div class="home-body-new" id="home-body"></div>
+  <div class="home-bottom-bar">
+    <button class="home-bottom-btn" onclick="go('my-team')">My Team</button>
+    <button class="home-bottom-btn" onclick="showOpponents()">Opponents</button>
   </div>
 </div>
 
@@ -959,6 +977,11 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
       <span class="ham-item-label">Settings</span>
     </div>
     <div style="margin-top:auto;border-top:1px solid var(--border);">
+      <div id="ham-end-game" style="display:none;border-bottom:1px solid var(--border);">
+        <div class="ham-item" onclick="hideHam();endGame();">
+          <span class="ham-item-label" style="color:var(--red);">End Game</span>
+        </div>
+      </div>
       <div class="ham-item" onclick="exportCurrentGame()">
         <span class="ham-item-label" style="color:var(--text3);">Export Game</span>
       </div>
@@ -1014,7 +1037,7 @@ function doBackup(){
   const blob=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a'); a.href=url;
-  a.download='pitchCharter_'+new Date().toISOString().split('T')[0]+'.json'; a.click();
+  a.download='cipher_backup.json'; a.click();
 }
 
 // ══════════════════════════════════════════
@@ -1033,9 +1056,68 @@ function go(name){
   if(name==='stats') renderStats();
   if(name==='command') renderCommand();
 }
-function showHam(){ document.getElementById('ham-ov').classList.add('on'); }
+function showHam(){
+  document.getElementById('ham-ov').classList.add('on');
+  const eg=document.getElementById('ham-end-game');
+  if(eg) eg.style.display=G?'block':'none';
+}
 function hideHam(){ document.getElementById('ham-ov').classList.remove('on'); }
 function exportCurrentGame(){ hideHam(); if(G) exportGame(G.id); }
+
+function endGame(){
+  if(!G)return;
+  const pc=(G.pitches||[]).length;
+  showModal('End Game',`
+    <div style="text-align:center;padding:8px 0 16px;">
+      <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:4px;">vs. ${G.opp}</div>
+      <div style="font-size:30px;font-weight:900;color:var(--text);margin-bottom:6px;">${G.ourScore??0} – ${G.oppScore??0}</div>
+      <div style="font-size:13px;color:var(--text3);">${pc} pitch${pc===1?'':'es'} logged</div>
+    </div>
+    <button class="btn btn-danger btn-block" onclick="confirmEndGame()" style="margin-bottom:10px;">End Game</button>
+    <button class="btn btn-block" onclick="hideModal()">Cancel</button>
+  `);
+}
+function confirmEndGame(){
+  if(!G)return;
+  G.completed=true;
+  S.activeId=null;
+  const opp=G.opp;
+  G=null;
+  save(); hideModal();
+  go('home');
+  setTimeout(()=>showBackupPrompt(opp),350);
+}
+function showBackupPrompt(opp){
+  showModal('Game Complete',`
+    <div style="text-align:center;padding:8px 0 16px;">
+      <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px;">vs. ${opp||'Opponent'}</div>
+      <div style="font-size:13px;color:var(--text3);line-height:1.6;">Your data is saved in this browser.<br>Back it up to your device now?</div>
+    </div>
+    <button class="btn btn-primary btn-block" onclick="doBackup();hideModal();" style="margin-bottom:10px;">Save Backup</button>
+    <button class="btn btn-block" onclick="hideModal()">Skip</button>
+  `);
+}
+function restoreFromBackup(){
+  const inp=document.createElement('input');
+  inp.type='file'; inp.accept='.json';
+  inp.onchange=function(e){
+    const file=e.target.files[0];
+    if(!file)return;
+    const reader=new FileReader();
+    reader.onload=function(ev){
+      try{
+        const data=JSON.parse(ev.target.result);
+        if(!data.games||!Array.isArray(data.games)) throw new Error('Not a valid Cipher backup file.');
+        S=data; save(); hideModal();
+        setTimeout(()=>location.reload(),150);
+      }catch(err){
+        alert('Restore failed: '+err.message);
+      }
+    };
+    reader.readAsText(file);
+  };
+  inp.click();
+}
 function navTo(screen){
   hideHam();
   if(screen==='game'){ go(G?'game':'home'); return; }
@@ -1048,37 +1130,120 @@ function navTo(screen){
 // ══════════════════════════════════════════
 // HOME
 // ══════════════════════════════════════════
-function renderHome(){
-  const el=document.getElementById('game-list');
-  if(!S.games.length){ el.innerHTML='<div class="empty">No games yet.<br>Tap New Game to start.</div>'; return; }
+function _gameCardHTML(g){
   const level=S.team.level||'hs';
-  el.innerHTML=S.games.slice().reverse().map(g=>{
-    // build pitcher grade chips for this game
-    const pitcherGrades=[];
-    const seenAppIds=new Set();
-    (g.pitchers||[]).forEach(gp=>{
-      if(seenAppIds.has(gp.appId)) return;
-      seenAppIds.add(gp.appId);
-      const ps=(g.pitches||[]).filter(p=>p.appId===gp.appId);
-      if(!ps.length) return;
-      const gr=computeOutingGrade(ps,level);
-      if(gr) pitcherGrades.push({name:gp.name,gr});
+  const pitcherGrades=[];
+  const seenAppIds=new Set();
+  (g.pitchers||[]).forEach(gp=>{
+    if(seenAppIds.has(gp.appId)) return;
+    seenAppIds.add(gp.appId);
+    const ps=(g.pitches||[]).filter(p=>p.appId===gp.appId);
+    if(!ps.length) return;
+    const gr=computeOutingGrade(ps,level);
+    if(gr) pitcherGrades.push({name:gp.name,gr});
+  });
+  const _gradesOn=S.settings.showOutingGrades!==false;
+  const gradesHTML=_gradesOn&&pitcherGrades.length?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;">${pitcherGrades.map(({name,gr})=>`<div style="display:flex;align-items:center;gap:5px;padding:4px 8px;background:var(--bg3);border-radius:var(--rsm);">${_gradeChip(gr)}<span style="font-size:11px;color:var(--text2);font-weight:600;">${_pShortName(name)}</span></div>`).join('')}</div>`:'';
+  return`<div class="game-card" onclick="resumeGame('${g.id}')">
+    <button class="game-card-menu" onclick="showGameCardMenu('${g.id}');event.stopPropagation();">⋯</button>
+    <div class="game-card-top"><div class="game-card-opp">vs. ${g.opp}</div></div>
+    <div class="game-card-bot">
+      <div style="font-size:15px;font-weight:600;margin-bottom:4px;">${g.ourScore??'—'} – ${g.oppScore??'—'}</div>
+      ${g.date} · <span class="badge ${g.ha==='home'?'badge-home':'badge-away'}">${g.ha.toUpperCase()}</span> · ${(g.pitches||[]).length} pitches
+    </div>
+    ${gradesHTML}
+    ${(g.pitches||[]).length?`<div onclick="showAnalytics('${g.id}','home');event.stopPropagation();" style="margin-top:10px;padding:7px 10px;background:var(--bg3);border-radius:var(--rsm);text-align:center;font-size:12px;font-weight:700;color:var(--accent);">View Analytics →</div>`:''}
+  </div>`;
+}
+
+function renderHome(){
+  const el=document.getElementById('home-body');
+  const level=S.team.level||'hs';
+
+  // Last Outing card — most recent game with pitches, primary pitcher
+  let outingHTML='';
+  const gamesWithPitches=S.games.filter(g=>(g.pitches||[]).length>0);
+  if(gamesWithPitches.length){
+    const lastGame=gamesWithPitches[gamesWithPitches.length-1];
+    const pitcherMap={};
+    (lastGame.pitches||[]).forEach(p=>{
+      if(!pitcherMap[p.appId]) pitcherMap[p.appId]={pc:0,k:0};
+      pitcherMap[p.appId].pc++;
+      if(p.result==='K') pitcherMap[p.appId].k++;
     });
-    const _gradesOn=S.settings.showOutingGrades!==false;
-    const gradesHTML=_gradesOn&&pitcherGrades.length?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;">${pitcherGrades.map(({name,gr})=>`<div style="display:flex;align-items:center;gap:5px;padding:4px 8px;background:var(--bg3);border-radius:var(--rsm);">${_gradeChip(gr)}<span style="font-size:11px;color:var(--text2);font-weight:600;">${_pShortName(name)}</span></div>`).join('')}</div>`:'';
-    return`<div class="game-card" onclick="resumeGame('${g.id}')">
-      <button class="game-card-menu" onclick="showGameCardMenu('${g.id}'); event.stopPropagation();">⋯</button>
-      <div class="game-card-top">
-        <div class="game-card-opp">vs. ${g.opp}</div>
+    let topId=null,topPc=0;
+    Object.entries(pitcherMap).forEach(([aid,st])=>{ if(st.pc>topPc){topPc=st.pc;topId=aid;} });
+    if(topId){
+      const gp=(lastGame.pitchers||[]).find(p=>p.appId===topId);
+      const ps=(lastGame.pitches||[]).filter(p=>p.appId===topId);
+      const gr=computeOutingGrade(ps,level);
+      const gradeHTML=gr&&S.settings.showOutingGrades!==false?`<div class="outing-grade-lg" style="color:${gr.color};">${gr.letter}</div>`:'';
+      outingHTML=`<div class="outing-strip" onclick="showAnalytics('${lastGame.id}','home')">
+        <div class="outing-top">
+          <div class="outing-left">
+            <div class="outing-eyebrow">Last Outing</div>
+            <div class="outing-pitcher">${gp?gp.name:'—'}</div>
+            <div class="outing-meta">vs. ${lastGame.opp} · ${lastGame.date} · ${lastGame.ha==='home'?'Home':'Away'}</div>
+          </div>
+          <div class="outing-right">
+            <div class="outing-stat">
+              <div class="outing-stat-val">${topPc}</div>
+              <div class="outing-stat-lbl">Pitches</div>
+            </div>
+            <div class="outing-stat">
+              <div class="outing-stat-val">${pitcherMap[topId].k}</div>
+              <div class="outing-stat-lbl">K</div>
+            </div>
+            ${gradeHTML}
+          </div>
+        </div>
+      </div>`;
+    }
+  }
+
+  const gc=S.games.length;
+  el.innerHTML=`
+    ${outingHTML}
+    <button class="home-btn-primary" onclick="go('new-game')">+ New Game</button>
+    <button class="home-btn-sec" onclick="showAnalytics(null,'home')">
+      <div class="home-btn-sec-left">
+        <div>Analytics</div>
+        <div class="home-btn-sec-sub">Pitch matrix · heat maps · count drill-down</div>
       </div>
-      <div class="game-card-bot">
-        <div style="font-size:15px;font-weight:600;margin-bottom:4px;">${g.ourScore??'—'} – ${g.oppScore??'—'}</div>
-        ${g.date} · <span class="badge ${g.ha==='home'?'badge-home':'badge-away'}">${g.ha.toUpperCase()}</span> · ${(g.pitches||[]).length} pitches
+      <div class="home-btn-sec-right"><span class="home-chevron">›</span></div>
+    </button>
+    <button class="home-btn-sec" onclick="showStats('home')">
+      <div class="home-btn-sec-left">
+        <div>Stats</div>
+        <div class="home-btn-sec-sub">Pitcher stat lines · SIERA · sortable</div>
       </div>
-      ${gradesHTML}
-      ${(g.pitches||[]).length?`<div onclick="showAnalytics('${g.id}','home');event.stopPropagation();" style="margin-top:10px;padding:7px 10px;background:var(--bg3);border-radius:var(--rsm);text-align:center;font-size:12px;font-weight:700;color:var(--accent);">View Analytics →</div>`:''}
-    </div>`;
-  }).join('');
+      <div class="home-btn-sec-right"><span class="home-chevron">›</span></div>
+    </button>
+    <button class="home-btn-sec" onclick="showCommand('home')">
+      <div class="home-btn-sec-left">
+        <div>Command</div>
+        <div class="home-btn-sec-sub">Zone tendencies · miss direction · hit spot</div>
+      </div>
+      <div class="home-btn-sec-right"><span class="home-chevron">›</span></div>
+    </button>
+    <button class="home-btn-sec" onclick="showRecentGames()">
+      <div class="home-btn-sec-left">
+        <div>Recent Games</div>
+        <div class="home-btn-sec-sub">Browse and review past outings</div>
+      </div>
+      <div class="home-btn-sec-right">${gc?`<div class="home-badge">${gc} game${gc===1?'':'s'}</div>`:''}<span class="home-chevron">›</span></div>
+    </button>
+    <div style="display:flex;gap:6px;margin-top:4px;">
+      <button onclick="devLoadGame()" style="flex:1;padding:8px;background:rgba(255,200,0,0.07);border:1px dashed rgba(255,200,0,0.25);border-radius:var(--rsm);color:rgba(255,200,0,0.4);font-size:12px;cursor:pointer;">⚙ Test Game</button>
+      <button onclick="devSimGame()" style="flex:1;padding:8px;background:rgba(255,200,0,0.07);border:1px dashed rgba(255,200,0,0.25);border-radius:var(--rsm);color:rgba(255,200,0,0.4);font-size:12px;cursor:pointer;">⚙ Simulate</button>
+    </div>
+  `;
+}
+
+function showRecentGames(){
+  if(!S.games.length){ showModal('Recent Games','<div class="empty">No games yet.<br>Tap + New Game to start.</div>'); return; }
+  const cards=S.games.slice().reverse().map(_gameCardHTML).join('');
+  showModal('Recent Games',`<div style="max-height:65vh;overflow-y:auto;-webkit-overflow-scrolling:touch;">${cards}</div>`);
 }
 function resumeGame(id){ G=S.games.find(g=>g.id===id); S.activeId=id; go('game'); }
 
@@ -1127,6 +1292,15 @@ function showSettings(){
         <div style="font-size:14px;font-weight:600;color:var(--text);">Hit Spot Tolerance</div>
         <div style="font-size:11px;color:var(--text3);margin-top:2px;">Radius counted as "hit spot" — ~2 baseballs (Precise) to ~5 baseballs (Generous)</div>
         <div style="display:flex;gap:6px;margin-top:10px;">${tolButtons}</div>
+      </div>
+      <div style="padding:12px 0;border-bottom:1px solid var(--border);">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="font-size:14px;font-weight:600;color:var(--text);">Restore from Backup</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px;">Select a cipher_backup.json to restore all data</div>
+          </div>
+          <button onclick="restoreFromBackup()" style="padding:5px 14px;font-size:12px;font-weight:700;border-radius:20px;border:1.5px solid var(--border2);background:none;color:var(--text2);cursor:pointer;flex-shrink:0;margin-left:12px;">Restore</button>
+        </div>
       </div>
     </div>
   `);
@@ -1492,6 +1666,123 @@ function deleteOpponent(i){
   S.opponents.splice(i,1); save(); showSavedOpponents();
 }
 
+// ── Standalone Opponents Screen ──
+function showOpponents(){
+  if(!S.opponents) S.opponents=[];
+  const saved=S.opponents;
+  const savedNames=new Set(saved.map(o=>o.name.toLowerCase()));
+  const gameOnly=[...new Set((S.games||[]).map(g=>g.opp))].filter(n=>!savedNames.has(n.toLowerCase()));
+
+  let html=`<button class="btn btn-primary btn-block" onclick="saNewOpponent()" style="margin-bottom:14px;">+ Add Opponent</button>`;
+
+  if(saved.length){
+    html+=saved.map((o,i)=>`
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="saEditOpponent(${i})">
+        <div style="font-size:16px;font-weight:700;">${o.name}</div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="font-size:12px;color:var(--text3);">${o.roster.length} players</div>
+          <div style="color:var(--accent);font-size:20px;font-weight:300;">›</div>
+        </div>
+      </div>`).join('');
+  }
+
+  if(gameOnly.length){
+    if(saved.length) html+=`<div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin:12px 0 8px;">From Games — No Roster Saved</div>`;
+    html+=gameOnly.map(name=>`
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="saNewOpponent(${JSON.stringify(name)})">
+        <div style="font-size:16px;font-weight:700;color:var(--text);">${name}</div>
+        <div style="font-size:12px;color:var(--accent);">Add Roster +</div>
+      </div>`).join('');
+  }
+
+  if(!saved.length&&!gameOnly.length){
+    html+=`<div class="empty" style="padding:32px 0;">No opponents yet.<br>Tap "+ Add Opponent" to get started.</div>`;
+  }
+
+  showModal('Opponents',`<div style="max-height:70vh;overflow-y:auto;-webkit-overflow-scrolling:touch;">${html}</div>`);
+}
+
+function saNewOpponent(prefill=''){
+  _saOpp={name:prefill,roster:[],idx:-1};
+  showOpponentEdit();
+}
+
+function saEditOpponent(i){
+  const o=S.opponents[i]; if(!o)return;
+  _saOpp={name:o.name,roster:o.roster.map(p=>({...p})),idx:i};
+  showOpponentEdit();
+}
+
+function showOpponentEdit(){
+  if(!_saOpp)return;
+  const isNew=_saOpp.idx<0;
+  const rosterHTML=_saOpp.roster.length
+    ?_saOpp.roster.map((p,i)=>`
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);">
+        <div style="font-size:13px;color:var(--text3);width:30px;text-align:center;flex-shrink:0;">#${p.num||'—'}</div>
+        <div style="flex:1;font-size:15px;font-weight:600;">${p.name}</div>
+        <div style="font-size:11px;font-weight:700;background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:2px 8px;color:var(--text2);flex-shrink:0;">${p.hand||'R'}</div>
+        <button onclick="saRemovePlayer(${i})" style="background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;padding:4px 6px;flex-shrink:0;">✕</button>
+      </div>`).join('')
+    :`<div style="text-align:center;padding:20px 0;color:var(--text3);font-size:13px;">No players yet — import a roster below.</div>`;
+
+  showModal(isNew?'New Opponent':'Edit Opponent',`
+    <div class="fgroup"><label>Team Name</label><input type="text" id="sa-opp-name" value="${_saOpp.name}" placeholder="Opponent name..."></div>
+    <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Roster · ${_saOpp.roster.length} players</div>
+    <div style="max-height:34vh;overflow-y:auto;-webkit-overflow-scrolling:touch;margin-bottom:14px;">${rosterHTML}</div>
+    <div style="display:flex;gap:8px;margin-bottom:8px;">
+      <button class="btn btn-block" onclick="saImportPaste()" style="flex:1;">Paste Import</button>
+      <button class="btn btn-block" onclick="saScan()" style="flex:1;">Scan Card</button>
+    </div>
+    <button class="btn btn-primary btn-block" onclick="saOppSave()" style="margin-bottom:${isNew?'0':'8px'};">Save</button>
+    ${!isNew?`<button class="btn btn-danger btn-block" onclick="saOppDelete()">Delete Opponent</button>`:''}
+  `);
+}
+
+function saRemovePlayer(i){ _saOpp.roster.splice(i,1); showOpponentEdit(); }
+
+function saImportPaste(){
+  showModal('Paste Roster',`
+    <div style="font-size:12px;color:var(--text2);margin-bottom:10px;">Paste from MaxPreps, a spreadsheet, or any list. One player per line. The app detects number, name, position, and L/R/S.</div>
+    <textarea id="sa-paste-txt" style="width:100%;height:150px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--rsm);color:var(--text);font-size:13px;padding:10px;resize:vertical;box-sizing:border-box;" placeholder="12  Smith, John   SS  R&#10;4   Jones, Mike   CF  L&#10;7   Davis, Tom    3B"></textarea>
+    <div style="display:flex;gap:8px;margin-top:12px;">
+      <button class="btn btn-block" onclick="showOpponentEdit()">Cancel</button>
+      <button class="btn btn-primary btn-block" onclick="saDoPaste()">Import</button>
+    </div>
+  `);
+}
+
+function saDoPaste(){
+  const text=document.getElementById('sa-paste-txt').value;
+  const players=parseRosterPaste(text);
+  if(!players.length){alert('Could not parse any players. Try: #12 John Smith SS R');return;}
+  _saOpp.roster=[..._saOpp.roster,...players];
+  showOpponentEdit();
+}
+
+function saScan(){
+  _ocrCtx='standalone';
+  document.getElementById('ocr-camera-input').click();
+}
+
+function saOppSave(){
+  const inp=document.getElementById('sa-opp-name');
+  const name=inp?inp.value.trim():_saOpp.name;
+  if(!name){alert('Enter a team name.');return;}
+  if(!S.opponents) S.opponents=[];
+  const entry={id:_saOpp.idx>=0?S.opponents[_saOpp.idx].id:'opp_'+Date.now(),name,roster:_saOpp.roster};
+  if(_saOpp.idx>=0) S.opponents[_saOpp.idx]=entry;
+  else S.opponents.push(entry);
+  save(); _saOpp=null; showOpponents();
+}
+
+function saOppDelete(){
+  if(_saOpp.idx<0){showOpponents();return;}
+  if(!confirm('Delete '+_saOpp.name+'?'))return;
+  S.opponents.splice(_saOpp.idx,1);
+  save(); _saOpp=null; showOpponents();
+}
+
 function saveOpponentToRoster(){
   const name=document.getElementById('ng-opp').value.trim();
   if(!name){alert('Enter opponent name in Step 1 first.');return;}
@@ -1591,6 +1882,8 @@ function addBatterManual(){
 
 // ── OCR Scan / Upload ──
 let _ocrPlayers=[];
+let _ocrCtx='newgame'; // 'newgame' | 'standalone'
+let _saOpp=null; // standalone opponent editor state: {name, roster, idx}
 
 function scanLineupCard(){ document.getElementById('ocr-camera-input').click(); }
 function uploadLineupPhoto(){ document.getElementById('ocr-upload-input').click(); }
@@ -1672,9 +1965,13 @@ function showOCRReview(players){
 function confirmOCRPlayers(){
   _ocrPlayers.forEach((p,i)=>{
     const chk=document.getElementById('ocr-chk-'+i);
-    if(chk&&chk.checked&&p.name.trim()) NG.oppRoster.push({...p});
+    if(chk&&chk.checked&&p.name.trim()){
+      if(_ocrCtx==='standalone'&&_saOpp) _saOpp.roster.push({...p});
+      else NG.oppRoster.push({...p});
+    }
   });
-  hideModal(); renderNGOppRoster();
+  if(_ocrCtx==='standalone'){ _ocrCtx='newgame'; showOpponentEdit(); }
+  else { hideModal(); renderNGOppRoster(); }
 }
 
 // ── Drag to Reorder ──
