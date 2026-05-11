@@ -1,0 +1,1160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="theme-color" content="#0a0a0f">
+<title>Cipher</title>
+<style>
+:root {
+  --bg: #0a0a0f;
+  --bg2: #13131a;
+  --bg3: #1c1c26;
+  --bg4: #252533;
+  --border: rgba(255,255,255,0.08);
+  --border2: rgba(255,255,255,0.18);
+  --text: #f0f0f5;
+  --text2: #9090a8;
+  --text3: #5a5a72;
+  --accent: #4a9eff;
+  --green: #3dba7a;
+  --red: #e85555;
+  --orange: #f0873a;
+  --yellow: #f5c842;
+  --r: 10px;
+  --rsm: 6px;
+}
+
+/* Background ONLY on LIVE GAME screen */
+#screen-game {
+  background-color: #000;
+  background-image: url('New Background.jpg');
+  background-repeat: no-repeat;
+  background-size: 100% auto;
+  background-position: center bottom;
+}
+
+/* Batter silhouette */
+.batter-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: bottom center;
+  opacity: 0.42;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+#batter-overlay {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 130px;
+  pointer-events: none;
+  z-index: 3;
+  display: none;
+}
+
+.silhouette-panel img[style*="scaleX(-1)"] {
+  filter: brightness(1.12);
+}
+
+/* Original styles */
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; width: 100%; overflow: hidden; max-width: 100vw; }
+
+body {
+  background: transparent;
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+  min-height: 100vh;
+  overflow: hidden;
+  position: relative;
+}
+
+/* SCREENS */
+.screen { display: none; height: 100vh; width: 100%; max-width: 100vw; flex-direction: column; overflow: hidden; }
+.screen.active { display: flex; }
+
+/* NAV */
+.nav { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--bg); flex-shrink: 0; }
+.nav-title { font-size: 15px; font-weight: 600; }
+.nav-back { color: var(--accent); font-size: 14px; cursor: pointer; padding: 6px 0; min-width: 60px; }
+.nav-act { color: var(--accent); font-size: 14px; font-weight: 600; cursor: pointer; padding: 6px 0; text-align: right; min-width: 60px; }
+
+/* SCROLL CONTENT */
+.scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 16px; }
+
+/* BUTTONS */
+.btn { display: flex; align-items: center; justify-content: center; padding: 14px 20px; border-radius: var(--r); border: 1px solid var(--border2); background: var(--bg3); color: var(--text); font-size: 16px; font-weight: 500; cursor: pointer; user-select: none; transition: background 0.1s; }
+.btn:active { background: var(--bg4); }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn-primary:active { background: #2d7dd6; }
+.btn-danger { background: var(--red); border-color: var(--red); color: #fff; }
+.btn-sm { padding: 10px 16px; font-size: 14px; }
+.btn-block { width: 100%; }
+.btn-row { display: flex; gap: 10px; }
+
+/* FORM */
+.fgroup { margin-bottom: 18px; }
+label { font-size: 14px; color: var(--text2); margin-bottom: 8px; display: block; }
+input, select, textarea { background: var(--bg3); border: 1.5px solid var(--border2); border-radius: var(--rsm); color: var(--text); font-size: 17px; padding: 14px 16px; width: 100%; outline: none; font-family: inherit; -webkit-appearance: none; appearance: none; }
+input:focus, select:focus { border-color: var(--accent); }
+input[type=number] { -moz-appearance: textfield; }
+select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239090a8' stroke-width='1.5' fill='none'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px; }
+.section { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); padding: 16px; margin-bottom: 14px; }
+.section-title { font-size: 12px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 14px; }
+.divider { height: 1px; background: var(--border); margin: 14px 0; }
+
+/* TOGGLE ROW */
+.tog-row { display: flex; gap: 8px; }
+.tog-btn { flex: 1; padding: 13px; border-radius: var(--rsm); border: 1.5px solid var(--border2); background: var(--bg3); color: var(--text2); font-size: 15px; font-weight: 500; cursor: pointer; text-align: center; transition: all 0.1s; }
+.tog-btn.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* HAND SELECTOR */
+.hand-row { display: flex; gap: 8px; }
+.hand-btn { flex: 1; padding: 14px; border-radius: var(--rsm); border: 1.5px solid var(--border2); background: var(--bg3); font-size: 18px; font-weight: 700; cursor: pointer; text-align: center; }
+.hand-btn.L.on { border-color: var(--accent); color: var(--accent); background: rgba(74,158,255,0.12); }
+.hand-btn.R.on { border-color: var(--red); color: var(--red); background: rgba(232,85,85,0.12); }
+.hand-btn.S.on { border-color: var(--green); color: var(--green); background: rgba(61,186,122,0.12); }
+.pos-btn { min-width:32px; padding:6px 4px; border-radius:var(--rsm); border:1.5px solid var(--border2); background:var(--bg3); font-size:12px; font-weight:700; cursor:pointer; text-align:center; color:var(--text2); }
+.pos-btn.on { background:var(--accent); border-color:var(--accent); color:#fff; }
+.arsenal-btn { min-width:32px; padding:6px 4px; border-radius:var(--rsm); border:1.5px solid var(--border2); background:var(--bg3); font-size:12px; font-weight:700; cursor:pointer; text-align:center; color:var(--text2); }
+.arsenal-btn.on { background:var(--accent); border-color:var(--accent); color:#fff; }
+
+/* LINEUP / ROSTER */
+.player-row { display: flex; align-items: center; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--border); }
+.player-num { width: 30px; height: 30px; border-radius: 50%; background: var(--bg4); display: flex; align-items: center; justify-content: center; font-size: 13px; color: var(--text2); font-weight: 700; flex-shrink: 0; }
+.player-info { flex: 1; }
+.player-name { font-size: 16px; font-weight: 600; }
+.player-sub { font-size: 12px; color: var(--text2); margin-top: 3px; }
+.hand-badge { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; flex-shrink: 0; }
+.lineup-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); padding: 14px; margin-bottom: 12px; }
+.lineup-card.current { border-color: var(--accent); background: rgba(74,158,255,0.08); }
+.lineup-card-header { display: grid; grid-template-columns: 42px 40px minmax(0,1fr); gap: 10px; align-items: center; }
+.lineup-card-name { font-size: 15px; font-weight: 700; }
+.lineup-card-hand { font-size: 13px; color: var(--text2); }
+.lineup-card-num { font-size: 14px; color: var(--text3); }
+.lineup-card-results { font-size: 13px; color: var(--text2); margin-top: 10px; white-space: pre-wrap; word-break: break-word; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+.hb-L { background: rgba(74,158,255,0.2); color: var(--accent); }
+.hb-R { background: rgba(232,85,85,0.2); color: var(--red); }
+.hb-S { background: rgba(61,186,122,0.2); color: var(--green); }
+.add-row { display: flex; align-items: center; gap: 10px; padding: 14px 0; color: var(--accent); font-size: 16px; cursor: pointer; background: none; border: none; width: 100%; }
+
+/* HOME */
+#screen-home { overflow: hidden; background: #000; }
+.home-header-band { position: relative; flex-shrink: 0; background: #000; border-bottom: 1.5px solid rgba(74,158,255,0.18); }
+.home-header-band > img { display: block; width: 100%; }
+.home-gear-btn { position: absolute; top: 50%; right: 12px; transform: translateY(-50%); width: 33px; height: 33px; border-radius: 50%; background: rgba(10,10,15,0.72); border: 1px solid rgba(255,255,255,0.15); color: var(--text2); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.home-body-new { flex: 1; display: flex; flex-direction: column; padding: 14px 16px 20px; gap: 8px; overflow-y: auto; -webkit-overflow-scrolling: touch; background: #000; }
+.home-body-new::-webkit-scrollbar { display: none; }
+.outing-strip { background: var(--bg2); border: 1px solid var(--border2); border-radius: var(--r); padding: 15px 16px 14px; display: flex; flex-direction: column; gap: 12px; cursor: pointer; position: relative; overflow: hidden; }
+.outing-strip::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--accent), #7ab8ff); }
+.outing-top { display: flex; align-items: flex-start; justify-content: space-between; }
+.outing-left { display: flex; flex-direction: column; gap: 3px; }
+.outing-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 1.8px; text-transform: uppercase; color: var(--text3); }
+.outing-pitcher { font-size: 22px; font-weight: 700; color: var(--text); }
+.outing-meta { font-size: 12px; color: var(--text2); }
+.outing-right { display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
+.outing-stat { text-align: center; }
+.outing-stat-val { font-size: 17px; font-weight: 700; color: var(--text); line-height: 1; }
+.outing-stat-lbl { font-size: 9px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.7px; font-weight: 700; margin-top: 2px; }
+.outing-grade-lg { font-size: 40px; font-weight: 900; line-height: 1; }
+.home-btn-primary { width: 100%; padding: 18px 20px; background: var(--accent); border: none; border-radius: var(--r); color: #fff; font-size: 19px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; box-shadow: 0 0 24px rgba(74,158,255,0.2); text-align: center; transition: opacity 0.1s; }
+.home-btn-primary:active { opacity: 0.88; }
+.home-btn-sec { width: 100%; padding: 15px 16px; background: var(--bg2); border: 1px solid var(--border2); border-radius: var(--r); color: var(--text); font-size: 17px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: background 0.12s; }
+.home-btn-sec:active { background: var(--bg3); }
+.home-btn-sec-left { display: flex; flex-direction: column; gap: 3px; text-align: left; }
+.home-btn-sec-sub { font-size: 11px; font-weight: 400; color: var(--text3); text-transform: none; letter-spacing: 0; }
+.home-btn-sec-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.home-chevron { color: var(--text3); font-size: 22px; font-weight: 300; line-height: 1; }
+.home-badge { font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 20px; background: var(--bg3); color: var(--text3); border: 1px solid var(--border); }
+.home-bottom-bar { display: grid; grid-template-columns: 1fr 1fr 1fr; border-top: 1px solid var(--border2); flex-shrink: 0; background: #000; }
+.home-bottom-btn { padding: 18px 16px; background: #000; border: none; border-right: 1px solid var(--border2); color: var(--text); font-size: 15px; font-weight: 700; letter-spacing: 1.6px; text-transform: uppercase; cursor: pointer; text-align: center; transition: background 0.1s; }
+.home-bottom-btn:last-child { border-right: none; }
+.home-bottom-btn:active { background: var(--bg2); }
+.game-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); padding: 16px; margin-bottom: 10px; cursor: pointer; position: relative; }
+.game-card:active { background: var(--bg3); }
+.game-card-menu { position: absolute; top: 10px; right: 10px; width: 28px; height: 28px; border-radius: 50%; background: rgba(255,255,255,0.08); border: none; color: var(--text2); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.1s; }
+.game-card-menu:active { background: rgba(255,255,255,0.15); }
+.game-card-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+.game-card-opp { font-size: 17px; font-weight: 700; }
+.game-card-bot { font-size: 13px; color: var(--text3); }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+.badge-home { background: rgba(74,158,255,0.15); color: var(--accent); }
+.badge-away { background: rgba(232,85,85,0.15); color: var(--red); }
+.empty { text-align: center; padding: 40px 20px; color: var(--text3); font-size: 15px; line-height: 1.6; }
+
+/* NEW GAME SCREEN */
+#screen-new-game { background: #000; }
+/* MY TEAM SCREEN */
+#screen-my-team { background: #000; }
+
+/* LIVE GAME SCREEN — background set at top of styles */
+
+/* All the rest of your original styles (top bar, batter bar, zone, etc.) */
+.gbar { display: flex; align-items: stretch; padding: 8px 12px 6px; gap: 8px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.gbar-left { flex: 1; display: flex; flex-direction: column; justify-content: center; cursor: pointer; }
+.gbar-left:active { opacity: 0.7; }
+.pitcher-name-line { font-size: 14px; font-weight: 700; color: var(--text); }
+.pitcher-stat-line { font-size: 11px; color: var(--text2); margin-top: 2px; white-space: nowrap; }
+.gbar-center { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; }
+.score-row { display: flex; align-items: center; gap: 10px; }
+.score-line { font-size: 20px; font-weight: 800; letter-spacing: 1px; }
+.inning-block { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text2); }
+.inning-block .inning-num { font-size: 16px; font-weight: 800; color: var(--text); }
+.game-info-line { font-size: 10px; color: var(--text3); margin-top: 2px; text-align: center; }
+.gbar-right { display: flex; flex-direction: column; align-items: flex-end; justify-content: center; gap: 4px; }
+.bbar { display: flex; align-items: center; justify-content: space-between; padding: 6px 12px; background: var(--bg2); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.action-block { display: flex; align-items: center; gap: 14px; }
+.outs-block { display: flex; gap: 5px; align-items: center; margin-right: 0; }
+.bases-wrap { position: relative; width: 52px; height: 38px; }
+.bs { position: absolute; width: 14px; height: 14px; border: 1.5px solid var(--text3); transform: rotate(45deg); }
+.bs.on { background: var(--yellow); border-color: var(--yellow); }
+.bs-1b { bottom: 0; right: 0; }
+.bs-2b { top: 0; left: 50%; transform: translateX(-50%) rotate(45deg); }
+.bs-3b { bottom: 0; left: 0; }
+.menu-btn { width: 34px; height: 34px; border-radius: 50%; background: var(--bg3); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 18px; cursor: pointer; color: var(--text2); }
+
+.bbar { display: flex; align-items: center; justify-content: space-between; padding: 6px 12px; background: var(--bg2); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.batter-btn { color: var(--accent); font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 4px; }
+.count-block { display: flex; align-items: center; gap: 10px; flex: 1; justify-content: center; }
+.count-num { font-size: 22px; font-weight: 800; color: var(--text); line-height: 1; }
+.count-lbl { font-size: 9px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.3px; }
+.count-sep { font-size: 16px; color: var(--text3); }
+.outs-block { display: flex; gap: 5px; align-items: center; }
+.outs-label { font-size: 11px; color: var(--text2); font-weight: 600; margin-right: 3px; }
+.out-pip { width: 11px; height: 11px; border-radius: 50%; border: 1.5px solid var(--text3); }
+.out-pip.on { background: var(--yellow); border-color: var(--yellow); }
+.action-block { display: flex; align-items: center; gap: 14px; }
+.inning-block { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text2); }
+.inning-block .inning-num { font-size: 16px; font-weight: 800; color: var(--text); }
+
+.ab-row { display: flex; gap: 6px; padding: 6px 10px; overflow-x: auto; flex-shrink: 0; scrollbar-width: none; min-height: 82px; align-items: center; justify-content: center; }
+.ab-row::-webkit-scrollbar { display: none; }
+.ab-thumb { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; }
+.ab-thumb:hover { opacity: 0.95; }
+.ab-thumb-lbl { font-size: 9px; color: var(--text3); }
+.ab-thumb-result { font-size: 9px; color: var(--text2); margin-top: 4px; text-align: center; max-width: 54px; line-height: 1.2; }
+.ab-thumb canvas { border: 1px solid var(--border2); border-radius: 4px; display: block; }
+.ab-empty { font-size: 11px; color: var(--text3); padding: 4px; }
+.ab-detail-grid { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 12px; }
+.ab-detail-visual { flex: 1 1 220px; }
+.ab-detail-info { flex: 1 1 180px; display: flex; flex-direction: column; gap: 8px; }
+.ab-detail-subtitle { font-size: 11px; color: var(--text2); font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
+.ab-detail-pitch-row { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: var(--rsm); background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); }
+.ab-detail-seq { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(255,255,255,0.08); color: var(--text); font-size: 11px; font-weight: 700; }
+.ab-detail-pitch { color: var(--text); font-size: 13px; line-height: 1.2; }
+.ab-detail-pitch-type { display: inline-block; min-width: 48px; color: var(--accent); font-weight: 700; }
+.ab-detail-pitch-result { display: inline-block; color: var(--text2); margin-left: 6px; }
+
+.game-area { display: grid; grid-template-rows: auto minmax(180px, 1fr); gap: 10px; width: 100%; min-height: 0; flex: 1; overflow: hidden; position: relative; }
+
+.spray-section { position: relative; width: 100%; aspect-ratio: 2 / 1; display: flex; align-items: stretch; justify-content: center; padding: 8px; overflow: hidden; }
+.spray-section canvas { width: 100%; height: 100%; display: block; max-width: 100%; }
+.field-event-btn { position: absolute; bottom: 8px; right: 8px; z-index: 5; padding: 6px 10px; background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--rsm); font-size: 11px; color: var(--text2); cursor: pointer; }
+.field-event-btn:active { background: var(--bg4); }
+
+/* Hamburger drawer */
+.ham-ov { display:none; position:fixed; inset:0; z-index:200; flex-direction:row-reverse; }
+.ham-ov.on { display:flex; }
+.ham-panel { width:240px; background:var(--bg2); height:100%; display:flex; flex-direction:column; border-left:1px solid var(--border); overflow-y:auto; flex-shrink:0; }
+.ham-dim { flex:1; background:rgba(0,0,0,0.55); }
+.ham-hdr { padding:20px 16px 12px; border-bottom:1px solid var(--border); }
+.ham-app-name { font-size:17px; font-weight:800; color:var(--text); }
+.ham-item { display:flex; align-items:center; gap:12px; padding:14px 16px; border-bottom:1px solid var(--border); cursor:pointer; -webkit-tap-highlight-color:transparent; }
+.ham-item:active { background:var(--bg3); }
+.ham-item.disabled { opacity:0.32; pointer-events:none; }
+.ham-item-icon { font-size:15px; width:20px; text-align:center; flex-shrink:0; }
+.ham-item-label { font-size:14px; font-weight:600; color:var(--text); flex:1; }
+.ham-item-soon { font-size:10px; color:var(--text3); }
+
+/* Stats screen */
+.stat-table-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; background:#fff; }
+.stat-table { width:100%; border-collapse:collapse; font-size:12px; background:#fff; }
+.stat-table th { padding:8px 5px; text-align:center; color:#555; font-size:10px; font-weight:700; cursor:pointer; white-space:nowrap; border-bottom:2px solid rgba(0,0,0,0.12); background:#f5f5f8; }
+.stat-table th.st-sort-active { color:var(--accent); }
+.stat-table th:first-child { text-align:left; padding-left:12px; cursor:default; min-width:90px; }
+.stat-table td { padding:9px 5px; text-align:center; border-bottom:1px solid rgba(0,0,0,0.07); vertical-align:middle; color:#111; font-size:12px; }
+.stat-table td:first-child { text-align:left; padding-left:12px; }
+.stat-totals td { background:rgba(0,0,0,0.05); font-weight:700; border-top:2px solid rgba(0,0,0,0.12); }
+.stat-tap { color:#111; font-weight:700; cursor:pointer; text-decoration:underline; text-decoration-color:rgba(0,0,0,0.2); -webkit-tap-highlight-color:transparent; }
+
+.game-body { flex: 1; display: flex; flex-direction: row; flex-wrap: nowrap; overflow: hidden; align-items: center; justify-content: center; width: 100%; min-height: 0; gap: 0; }
+.silhouette-panel { width: 120px; min-width: 100px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; position: relative; }
+
+.zone-center-panel { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4px 2px; gap: 4px; position: relative; overflow: hidden; margin-top: 0; min-width: 180px; max-width: 260px; transform: translateY(-7px); }
+.zone-tap-hint { font-size: 10px; color: var(--text3); text-align: center; }
+
+#zone-cv { width: 100% !important; max-width: 240px; height: auto !important; aspect-ratio: 190 / 210; }
+
+.pitch-panel { width: 130px; min-width: 110px; flex-shrink: 0; overflow-y: auto; padding: 6px 4px; scrollbar-width: none; display: flex; flex-direction: column; gap: 2px; background: transparent; align-self: flex-start; align-items: center; }
+.pitch-panel::-webkit-scrollbar { display: none; }
+.pitch-entry-item { display: flex; align-items: center; gap: 3px; padding: 2px 0; }
+.pi-seq { font-size: 9px; color: var(--text3); width: 12px; flex-shrink: 0; }
+.pi-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.pi-text { font-size: 9px; color: var(--text2); line-height: 1.3; }
+
+
+.inning-txt { font-size: 13px; color: var(--text2); }
+.inning-num { font-size: 16px; font-weight: 800; color: var(--text); }
+.bases-wrap { position: relative; width: 52px; height: 38px; }
+.bs { position: absolute; width: 14px; height: 14px; border: 1.5px solid var(--text3); transform: rotate(45deg); }
+.bs.on { background: var(--yellow); border-color: var(--yellow); }
+.bs-1b { bottom: 0; right: 0; }
+.bs-2b { top: 0; left: 50%; transform: translateX(-50%) rotate(45deg); }
+.bs-3b { bottom: 0; left: 0; }
+
+/* Entry overlay and sheets */
+.overlay { display: none; position: fixed; inset: 0; z-index: 100; flex-direction: column; }
+.overlay.on { display: flex; }
+.overlay-bg { flex: 1; background: rgba(0,0,0,0.7); }
+
+.entry-sheet { background: var(--bg); border-radius: var(--r); max-height: 85vh; display: flex; flex-direction: column; margin: auto; width: 95vw; max-width: 600px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); overflow: hidden; }
+.entry-top { display: flex; align-items: flex-start; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.entry-title { font-size: 16px; font-weight: 700; }
+.entry-body { padding: 16px 20px; overflow-y: auto; }
+.entry-foot { display: flex; gap: 10px; padding: 12px 20px 24px; flex-shrink: 0; }
+.confirm-btn { flex: 1; padding: 14px; background: var(--accent); border: none; border-radius: var(--rsm); color: #fff; font-weight: 600; cursor: pointer; }
+.confirm-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.undo-btn { padding: 8px 12px; background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--rsm); color: var(--text2); font-size: 14px; cursor: pointer; }
+
+/* Pitch type grid */
+.pt-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 16px; }
+.pt-btn { padding: 12px; background: var(--bg3); border: 1.5px solid var(--border2); border-radius: var(--rsm); color: var(--text); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: all 0.1s; }
+.pt-btn:active { background: var(--bg4); }
+.pt-btn.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.pt-abbr { font-size: 14px; font-weight: 700; }
+.pt-name { font-size: 11px; margin-top: 4px; color: var(--text2); }
+.pt-btn.on .pt-name { color: rgba(255,255,255,0.8); }
+
+/* Result buttons */
+.result-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.r-btn { padding: 12px; background: var(--bg3); border: 1.5px solid var(--border2); border-radius: var(--rsm); color: var(--text); font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.1s; }
+.r-btn.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.r-btn.s-type { background: rgba(232,85,85,0.1); border-color: rgba(232,85,85,0.3); }
+.r-btn.s-type.on { background: var(--red); border-color: var(--red); color: #fff; }
+.r-btn.b-type { background: rgba(74,158,255,0.1); border-color: rgba(74,158,255,0.3); }
+.r-btn.b-type.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* Velocity input */
+.velo-row { display: flex; align-items: center; gap: 10px; }
+.velo-in { flex: 1; padding: 12px; background: var(--bg3); border: 1.5px solid var(--border2); border-radius: var(--rsm); color: var(--text); font-size: 16px; }
+.velo-lbl { font-size: 14px; color: var(--text2); white-space: nowrap; }
+
+/* Modifier section */
+.mod-section { margin-bottom: 24px; }
+.mod-title { font-size: 12px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+.mod-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.mod-btn { flex: 1; min-width: 100px; padding: 10px 14px; background: var(--bg3); border: 1.5px solid var(--border2); border-radius: var(--rsm); color: var(--text2); font-size: 14px; cursor: pointer; transition: all 0.1s; }
+.mod-btn.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* Spray chart wrapper */
+.spray-mod-wrap { margin-bottom: 16px; }
+
+/* Runs input row */
+.runs-row { display: flex; gap: 10px; }
+.runs-group { flex: 1; }
+.runs-group label { font-size: 12px; color: var(--text2); margin-bottom: 6px; display: block; }
+.runs-group input { padding: 10px; background: var(--bg3); border: 1.5px solid var(--border2); border-radius: var(--rsm); color: var(--text); font-size: 16px; width: 100%; }
+
+/* Note input */
+.note-in { width: 100%; padding: 12px; background: var(--bg3); border: 1.5px solid var(--border2); border-radius: var(--rsm); color: var(--text); font-size: 14px; margin-top: 16px; }
+
+/* Base editor */
+.base-editor-wrap { display: flex; justify-content: center; margin: 16px 0; }
+.base-editor { position: relative; width: 100px; height: 100px; }
+.be-base { position: absolute; width: 24px; height: 24px; border-radius: 50%; background: var(--bg3); border: 2px solid var(--border2); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.1s; }
+.be-base.on { background: var(--accent); border-color: var(--accent); }
+.be-2b { top: 0; left: 50%; transform: translateX(-50%); }
+.be-1b { bottom: 10px; right: 10px; }
+.be-3b { bottom: 10px; left: 10px; }
+
+/* Zone confirm bar */
+.zone-confirm-bar { display: flex; align-items: center; gap: 8px; padding: 10px; background: var(--bg2); border-radius: var(--rsm); margin-bottom: 12px; }
+.zone-confirm-bar span { flex: 1; font-size: 13px; color: var(--text2); }
+.zone-confirm-bar button { padding: 6px 12px; background: var(--accent); border: none; border-radius: var(--rsm); color: #fff; font-size: 12px; font-weight: 600; cursor: pointer; }
+
+/* Modal styling */
+.modal-wrap { display: none; position: fixed; inset: 0; z-index: 200; align-items: center; justify-content: center; }
+.modal-wrap.on { display: flex; }
+.modal-bg { position: absolute; inset: 0; background: rgba(0,0,0,0.7); cursor: pointer; }
+.modal-sheet { position: relative; background: var(--bg); border-radius: var(--r); width: 95vw; max-width: 500px; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 10px 40px rgba(0,0,0,0.5); overflow: hidden; }
+.modal-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.modal-title { font-size: 15px; font-weight: 700; }
+.modal-x { font-size: 20px; cursor: pointer; color: var(--text2); }
+.modal-body { padding: 14px 16px; overflow-y: auto; flex: 1; }
+.summary-table { width: 100%; border: 1px solid rgba(255,255,255,0.08); border-radius: var(--r); overflow: hidden; background: rgba(255,255,255,0.02); margin-bottom: 16px; }
+.summary-row { display: grid; grid-template-columns: 1.25fr repeat(7,0.75fr); gap: 10px; padding: 12px 14px; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 13px; }
+.summary-row.header { background: rgba(255,255,255,0.05); color: var(--text2); text-transform: uppercase; font-weight: 700; letter-spacing: 0.4px; }
+.summary-row.total { background: rgba(255,255,255,0.08); font-weight: 700; }
+.summary-row.current { background: rgba(74,158,255,0.1); }
+
+/* Field event sheet */
+.fe-sheet { position: relative; background: var(--bg); border-radius: var(--r); width: 95vw; max-width: 500px; max-height: 80vh; padding: 14px 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); overflow-y: auto; }
+.fe-title { font-size: 15px; font-weight: 700; margin-bottom: 12px; }
+.fe-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+.fe-btn { padding: 12px; background: var(--bg3); border: 1.5px solid var(--border2); border-radius: var(--rsm); color: var(--text); font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.1s; }
+.fe-btn:active { background: var(--bg4); }
+.fe-btn.fe-danger { background: rgba(232,85,85,0.1); border-color: rgba(232,85,85,0.3); color: var(--red); }
+.fe-btn.fe-danger:active { background: var(--red); color: #fff; }
+
+/* Pitcher selector for New Game */
+.p-select { display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--bg2); border: 1.5px solid var(--border); border-radius: var(--r); margin-bottom: 10px; cursor: pointer; transition: all 0.1s; }
+.p-select:active { background: var(--bg3); border-color: var(--accent); }
+.p-av { width: 40px; height: 40px; border-radius: 50%; background: var(--bg3); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; color: var(--accent); flex-shrink: 0; }
+
+.hidden { display: none !important; }
+
+/* ══ PRACTICE MODE ══ */
+#screen-practice { overflow: hidden; background: #000; }
+.prac-bottom-bar { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--border2); flex-shrink: 0; background: #000; }
+.prac-bottom-btn { padding: 18px 16px; background: #000; border: none; border-right: 1px solid var(--border2); color: var(--text); font-size: 15px; font-weight: 700; letter-spacing: 1.6px; text-transform: uppercase; cursor: pointer; text-align: center; transition: background 0.1s; }
+.prac-bottom-btn:last-child { border-right: none; }
+.prac-bottom-btn:active { background: var(--bg2); }
+.prac-script-card { padding: 14px 16px; background: rgba(74,158,255,0.06); border-bottom: 1.5px solid rgba(74,158,255,0.2); display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
+.prac-script-hand { font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 20px; letter-spacing: 0.5px; flex-shrink: 0; }
+.prac-script-hand.L { background: rgba(74,158,255,0.2); color: var(--accent); border: 1px solid rgba(74,158,255,0.4); }
+.prac-script-hand.R { background: rgba(232,85,85,0.2); color: var(--red); border: 1px solid rgba(232,85,85,0.4); }
+.prac-script-pitch { font-size: 26px; font-weight: 900; color: var(--text); letter-spacing: 0.5px; flex: 1; }
+.prac-script-zone { font-size: 20px; font-weight: 900; color: var(--accent); }
+.prac-rec-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); padding: 14px 16px; cursor: pointer; margin-bottom: 6px; }
+.prac-rec-card:active { background: var(--bg3); }
+#screen-practice-setup { background: var(--bg); }
+.prac-mode-card { background: var(--bg2); border: 1.5px solid var(--border2); border-radius: var(--r); padding: 16px; display: flex; align-items: center; gap: 14px; cursor: pointer; transition: all 0.12s; margin-bottom: 8px; }
+.prac-mode-card:active { background: var(--bg3); }
+.prac-mode-card.sel { border-color: var(--accent); background: rgba(74,158,255,0.08); }
+.prac-mode-info { flex: 1; }
+.prac-mode-title { font-size: 16px; font-weight: 700; color: var(--text); }
+.prac-mode-desc { font-size: 11px; color: var(--text3); margin-top: 3px; line-height: 1.4; }
+.prac-pitcher-chip { display: flex; align-items: center; gap: 10px; padding: 13px 14px; background: var(--bg2); border: 1.5px solid var(--border2); border-radius: var(--rsm); cursor: pointer; transition: all 0.1s; margin-bottom: 8px; }
+.prac-pitcher-chip.sel { border-color: var(--accent); background: rgba(74,158,255,0.1); }
+.prac-pitcher-check { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border2); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #fff; font-size: 13px; }
+.prac-pitcher-chip.sel .prac-pitcher-check { background: var(--accent); border-color: var(--accent); }
+.prac-pitcher-name-txt { font-size: 15px; font-weight: 600; color: var(--text); }
+.prac-pitcher-sub { font-size: 11px; color: var(--text3); }
+.prac-preset-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.prac-preset-btn { padding: 8px 12px; background: var(--bg3); border: 1.5px solid var(--border2); border-radius: 20px; color: var(--text2); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.1s; white-space: nowrap; }
+.prac-preset-btn.sel { background: var(--accent); border-color: var(--accent); color: #fff; }
+#screen-practice-session { background: var(--bg); }
+.prac-sess-top { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--bg2); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.prac-sess-pitcher { font-size: 15px; font-weight: 700; color: var(--text); }
+.prac-sess-count { font-size: 12px; color: var(--text3); }
+.prac-situation-bar { display: flex; align-items: center; justify-content: center; gap: 24px; padding: 8px 16px; background: var(--bg2); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.prac-sit-num { font-size: 26px; font-weight: 800; color: var(--text); line-height: 1; }
+.prac-sit-lbl { font-size: 9px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.4px; }
+.prac-sit-sep { font-size: 20px; color: var(--text3); }
+.prac-suggest-bar { padding: 8px 14px; background: rgba(74,158,255,0.06); border-bottom: 1px solid var(--border); flex-shrink: 0; display: flex; align-items: center; gap: 10px; }
+.prac-suggest-lbl { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; }
+.prac-suggest-type { font-size: 14px; font-weight: 700; color: var(--accent); }
+.prac-duel-bar { display: flex; background: var(--bg2); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.prac-duel-half { flex: 1; padding: 8px 12px; text-align: center; border-bottom: 2px solid transparent; }
+.prac-duel-half.active { border-bottom-color: var(--accent); background: rgba(74,158,255,0.06); }
+.prac-duel-pname { font-size: 12px; font-weight: 700; color: var(--text2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.prac-duel-pts { font-size: 22px; font-weight: 900; color: var(--text); line-height: 1; }
+.prac-duel-half.active .prac-duel-pname { color: var(--accent); }
+.prac-zone-area { flex: 1; display: flex; align-items: center; justify-content: center; padding: 6px; overflow: hidden; position: relative; min-height: 100px; }
+.prac-intended-hint { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); font-size: 11px; font-weight: 700; color: var(--yellow); background: rgba(0,0,0,0.75); padding: 3px 10px; border-radius: 20px; pointer-events: none; white-space: nowrap; z-index: 2; }
+.prac-type-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 5px; padding: 8px 12px; flex-shrink: 0; }
+.prac-t-btn { padding: 9px 4px; background: var(--bg3); border: 1.5px solid var(--border2); border-radius: var(--rsm); color: var(--text); font-size: 12px; font-weight: 700; cursor: pointer; text-align: center; }
+.prac-t-btn.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.prac-result-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 5px; padding: 0 12px 6px; flex-shrink: 0; }
+.prac-r-btn { padding: 9px 4px; background: var(--bg3); border: 1.5px solid var(--border2); border-radius: var(--rsm); color: var(--text2); font-size: 11px; font-weight: 600; cursor: pointer; text-align: center; }
+.prac-r-btn.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.prac-foot { padding: 8px 12px 20px; display: flex; gap: 8px; flex-shrink: 0; }
+.prac-confirm-btn { flex: 1; padding: 14px; background: var(--accent); border: none; border-radius: var(--rsm); color: #fff; font-size: 16px; font-weight: 700; cursor: pointer; }
+.prac-confirm-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.prac-undo-btn { padding: 14px 16px; background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--rsm); color: var(--text2); font-size: 14px; font-weight: 600; cursor: pointer; }
+.prac-repeat-btn { padding: 14px 12px; background: var(--bg3); border: 1.5px solid var(--border2); border-radius: var(--rsm); color: var(--text2); font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.prac-repeat-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.prac-stat-row { display: flex; gap: 0; margin-bottom: 12px; border-radius: var(--rsm); overflow: hidden; border: 1px solid var(--border2); }
+.prac-stat-item { flex: 1; text-align: center; padding: 11px 6px; background: var(--bg2); border-right: 1px solid var(--border2); }
+.prac-stat-item:last-child { border-right: none; }
+.prac-stat-val { font-size: 22px; font-weight: 900; color: var(--text); line-height: 1; }
+.prac-stat-lbl { font-size: 10px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 0.8px; margin-top: 3px; }
+.prac-score-row { display: flex; align-items: center; gap: 16px; }
+.prac-score-item { font-size: 12px; color: var(--text3); }
+.prac-score-val { font-size: 15px; font-weight: 800; color: var(--text); }
+</style>
+<script src="https://unpkg.com/tesseract.js@5/dist/tesseract.min.js"></script>
+</head>
+<body>
+<input type="file" id="ocr-upload-input" accept="image/*" style="display:none;" onchange="handleOCRFile(this)">
+<input type="file" id="ocr-camera-input" accept="image/*" capture="environment" style="display:none;" onchange="handleOCRFile(this)">
+
+<div class="background-container"></div>
+
+<!-- ══ HOME ══ -->
+<div id="screen-home" class="screen active">
+  <div class="home-header-band">
+    <img src="Header.jpeg" alt="Cipher">
+  </div>
+  <div class="home-body-new" id="home-body"></div>
+  <div class="home-bottom-bar">
+    <button class="home-bottom-btn" onclick="go('my-team')">My Team</button>
+    <button class="home-bottom-btn" onclick="showSettings()">Settings</button>
+    <button class="home-bottom-btn" onclick="showOpponents()">Opponents</button>
+  </div>
+</div>
+
+<!-- ══ MY TEAM ══ -->
+<div id="screen-my-team" class="screen">
+  <div class="nav">
+    <span class="nav-back" onclick="go('home')">← Back</span>
+    <span class="nav-title">My Team</span>
+  </div>
+  <div class="scroll">
+    <div class="section">
+      <div class="fgroup">
+        <label>Team Name</label>
+        <input type="text" id="team-name" placeholder="Your team name..." oninput="S.team.name=this.value;save()">
+      </div>
+      <div class="fgroup" style="margin-bottom:0;">
+        <label>Competition Level</label>
+        <select id="level-sel" onchange="S.team.level=this.value;save()">
+          <option value="hs">High School</option>
+          <option value="juco">Junior College</option>
+          <option value="naia">NAIA</option>
+          <option value="d3">NCAA Division III</option>
+          <option value="d2">NCAA Division II</option>
+          <option value="d1">NCAA Division I</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:0 4px 8px;">
+      <div class="section-title" style="margin:0;padding:0;">Pitchers</div>
+      <button class="btn btn-sm" onclick="showAddPitcher()">+ Add</button>
+    </div>
+    <div id="roster-list"></div>
+  </div>
+</div>
+
+<!-- ══ NEW GAME ══ -->
+<div id="screen-new-game" class="screen">
+  <div class="nav">
+    <span class="nav-back" id="ng-back" onclick="ngBack()">← Back</span>
+    <span class="nav-title" id="ng-title">New Game</span>
+    <span class="nav-act" id="ng-next" onclick="ngNext()">Next →</span>
+  </div>
+  <!-- step indicator -->
+  <div style="display:flex;gap:6px;padding:10px 16px 0;" id="ng-steps">
+    <div id="ng-dot1" style="flex:1;height:3px;border-radius:2px;background:var(--accent);transition:background 0.2s;"></div>
+    <div id="ng-dot2" style="flex:1;height:3px;border-radius:2px;background:var(--bg4);transition:background 0.2s;"></div>
+    <div id="ng-dot3" style="flex:1;height:3px;border-radius:2px;background:var(--bg4);transition:background 0.2s;"></div>
+  </div>
+  <div class="scroll" id="ng-scroll">
+
+    <!-- ── Step 1: Game Info + Pitcher ── -->
+    <div id="ng-s1">
+      <div class="section">
+        <div class="section-title">Game Info</div>
+        <div class="fgroup">
+          <label>Opponent *</label>
+          <div style="display:flex;gap:8px;">
+            <input type="text" id="ng-opp" placeholder="Opponent name..." style="flex:1;">
+            <button class="btn btn-sm" onclick="showSavedOpponents()">Saved</button>
+          </div>
+        </div>
+        <div class="fgroup">
+          <label>Date</label>
+          <input type="date" id="ng-date">
+        </div>
+        <div class="fgroup">
+          <label>Home or Away</label>
+          <div class="tog-row">
+            <div class="tog-btn on" id="tog-home" onclick="setHA('home')">Home</div>
+            <div class="tog-btn" id="tog-away" onclick="setHA('away')">Away</div>
+          </div>
+        </div>
+        <div class="fgroup" style="margin-bottom:0;">
+          <label>Park / Field (optional)</label>
+          <input type="text" id="ng-field" placeholder="Field name...">
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title">Weather (optional)</div>
+        <div style="display:flex;gap:10px;">
+          <div class="fgroup" style="flex:1;margin-bottom:0;">
+            <label>Temp °F</label>
+            <input type="number" id="ng-temp" placeholder="72">
+          </div>
+          <div class="fgroup" style="flex:2;margin-bottom:0;">
+            <label>Conditions</label>
+            <select id="ng-cond">
+              <option value="">—</option>
+              <option>Clear</option><option>Partly Cloudy</option><option>Overcast</option>
+              <option>Windy</option><option>Rain</option><option>Cold</option><option>Hot</option><option>Humid</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="section" style="margin-bottom:0;">
+        <div class="section-title">Starting Pitcher *</div>
+        <div id="ng-starter-pick">
+          <div style="font-size:14px;color:var(--text2);margin-bottom:10px;">Select from roster:</div>
+          <div id="ng-roster-btns"></div>
+          <button class="btn btn-sm" style="margin-top:10px;" onclick="showManualStarter()">+ Enter manually</button>
+        </div>
+        <div id="ng-starter-chosen" class="hidden">
+          <div id="ng-starter-name" style="font-size:16px;font-weight:700;margin-bottom:10px;"></div>
+          <button class="btn btn-sm" onclick="clearStarter()">Change</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Step 2: Opponent Roster ── -->
+    <div id="ng-s2" class="hidden">
+      <div class="section">
+        <div class="section-title">Opponent Roster</div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:14px;">Add all players. You'll set the batting order in the next step.</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+          <button class="btn btn-sm" onclick="scanLineupCard()">Scan Card</button>
+          <button class="btn btn-sm" onclick="uploadLineupPhoto()">Upload Photo</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">
+          <button class="btn btn-sm" onclick="showOppPaste()">Paste Import</button>
+          <button class="btn btn-sm" onclick="showAddOppPlayer()">+ Add Player</button>
+        </div>
+        <div id="ng-opp-roster" style="display:flex;flex-direction:column;gap:8px;"></div>
+        <div id="ng-opp-empty" style="font-size:14px;color:var(--text3);text-align:center;padding:24px 0;">No players yet.</div>
+      </div>
+      <div class="section" style="margin-bottom:0;">
+        <button class="btn btn-sm btn-block" onclick="saveOpponentToRoster()">Save to Opponent Database</button>
+      </div>
+    </div>
+
+    <!-- ── Step 3: Batting Order ── -->
+    <div id="ng-s3" class="hidden">
+      <div class="section">
+        <div class="section-title">Batting Order</div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:12px;">Tap players below to set the order. Drag ≡ to reorder.</div>
+        <div id="ng-lineup" style="display:flex;flex-direction:column;gap:8px;"></div>
+        <div id="ng-lineup-empty" style="font-size:14px;color:var(--text3);text-align:center;padding:16px 0;">Tap players from the roster below.</div>
+      </div>
+      <div class="section" style="margin-bottom:0;">
+        <div class="section-title">Roster</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:12px;">Tap to add · tap again to remove</div>
+        <div id="ng-opp-bench" style="display:flex;flex-direction:column;gap:8px;"></div>
+        <button class="btn btn-sm" style="margin-top:10px;" onclick="showAddBatterManual()">+ Add manually</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══ LIVE GAME ══ -->
+<div id="screen-game" class="screen">
+  <!-- Top bar -->
+  <div class="gbar">
+    <div style="display:flex;align-items:center;gap:6px;flex:1.2;min-width:0;">
+      <div class="gbar-left" onclick="showPitcherPanel()" style="min-width:0;flex:1;">
+        <div class="pitcher-name-line" id="g-pitcher-name">— · 0 pitches</div>
+        <div class="pitcher-stat-line" id="g-pitcher-stats">St%: —  K: 0  BB: 0  H: 0</div>
+      </div>
+    </div>
+    <div class="gbar-center">
+      <div class="score-row" onclick="showEditScore()" style="cursor:pointer;">
+        <div class="score-line" id="g-score">0 – 0</div>
+        <div class="inning-block">
+          <span id="g-half">▲</span>
+          <span class="inning-num" id="g-inning">1</span>
+          <span id="g-suffix" style="font-size:11px;color:var(--text3);">st</span>
+        </div>
+      </div>
+      <div class="game-info-line" id="g-info"></div>
+    </div>
+    <div class="gbar-right">
+      <div class="menu-btn" onclick="undoLast()" title="Edit last pitch" style="font-size:14px;">↩</div>
+      <div class="menu-btn" onclick="showHam();event.stopPropagation();" style="font-size:18px;">☰</div>
+    </div>
+  </div>
+
+  <!-- Batter bar -->
+  <div class="bbar">
+    <div class="batter-btn" onclick="showBatterOptions()">
+      <span id="g-batter">— ▾</span>
+    </div>
+    <div class="count-block">
+      <div style="text-align:center;">
+        <div class="count-num" id="g-balls">0</div>
+        <div class="count-lbl">B</div>
+      </div>
+      <div class="count-sep">–</div>
+      <div style="text-align:center;">
+        <div class="count-num" id="g-strikes">0</div>
+        <div class="count-lbl">S</div>
+      </div>
+    </div>
+    <div class="action-block">
+      <div class="outs-block">
+        <span class="outs-label">Outs:</span>
+        <div class="out-pip" id="op1"></div>
+        <div class="out-pip" id="op2"></div>
+      </div>
+      <div class="bases-wrap">
+        <div class="bs bs-2b" id="b2b"></div>
+        <div class="bs bs-1b" id="b1b"></div>
+        <div class="bs bs-3b" id="b3b"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AB history row -->
+  <div class="ab-row" id="ab-row"></div>
+
+  <div class="game-area">
+    <!-- Spray Chart Section -->
+    <div class="spray-section">
+      <canvas id="spray-cv" width="400" height="200" style="display:block;cursor:default;width:100%;height:auto;"></canvas>
+      <button class="field-event-btn" onclick="showFieldEvent()">Field Event</button>
+    </div>
+
+    <!-- Batter overlay — absolutely positioned over full game-area height -->
+    <div id="batter-overlay"><img id="batter-overlay-img" src="batter-silhouette.png" class="batter-image" alt=""></div>
+
+    <!-- Game body: silhouette | zone | pitch list -->
+    <div class="game-body">
+      <!-- Left panel: silhouette for RHH, pitch list for LHH -->
+      <div id="left-panel" class="silhouette-panel">
+       <img src="batter-silhouette.png" class="batter-image" id="silhouette-left" alt="Batter">
+      </div>
+
+    <!-- Center: Strike Zone -->
+    <div class="zone-center-panel">
+      <div class="zone-tap-hint" id="zone-hint">Tap zone to begin pitch entry</div>
+      <canvas id="zone-cv" width="190" height="210" style="cursor:crosshair;display:block;"></canvas>
+    </div>
+
+    <!-- Right panel: pitch list for RHH, silhouette for LHH -->
+    <div id="right-panel" class="pitch-panel">
+    </div>
+  </div>
+  </div>
+</div>
+
+<!-- ══ ENTRY OVERLAY ══ -->
+<div class="overlay" id="entry-ov">
+  <div class="overlay-bg" onclick="cancelEntry()"></div>
+  <div class="entry-sheet">
+    <div class="entry-top">
+      <div>
+        <div class="entry-title" id="entry-title">Pitch Type</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px;" id="entry-sub"></div>
+      </div>
+      <button class="undo-btn" onclick="undoLast()">↩ Back</button>
+    </div>
+
+    <!-- Step 1: pitch type + velo -->
+    <div class="entry-body" id="step1">
+      <div class="zone-confirm-bar" id="zone-confirm-bar">
+        <span id="zone-loc-txt">Tap the zone to place pitch</span>
+        <button onclick="confirmZoneTap()">Place ✓</button>
+      </div>
+      <div class="pt-grid">
+        <button class="pt-btn" onclick="pickPT('FB')"><span class="pt-abbr">FB</span><span class="pt-name">Four-Seam</span></button>
+        <button class="pt-btn" onclick="pickPT('2S')"><span class="pt-abbr">2S</span><span class="pt-name">Two-Seam</span></button>
+        <button class="pt-btn" onclick="pickPT('SI')"><span class="pt-abbr">SI</span><span class="pt-name">Sinker</span></button>
+        <button class="pt-btn" onclick="pickPT('FC')"><span class="pt-abbr">FC</span><span class="pt-name">Cutter</span></button>
+        <button class="pt-btn" onclick="pickPT('SL')"><span class="pt-abbr">SL</span><span class="pt-name">Slider</span></button>
+        <button class="pt-btn" onclick="pickPT('SV')"><span class="pt-abbr">SV</span><span class="pt-name">Slurve</span></button>
+        <button class="pt-btn" onclick="pickPT('CB')"><span class="pt-abbr">CB</span><span class="pt-name">Curveball</span></button>
+        <button class="pt-btn" onclick="pickPT('CH')"><span class="pt-abbr">CH</span><span class="pt-name">Changeup</span></button>
+        <button class="pt-btn" onclick="pickPT('FS')"><span class="pt-abbr">FS</span><span class="pt-name">Splitter</span></button>
+        <button class="pt-btn" onclick="pickPT('FO')"><span class="pt-abbr">FO</span><span class="pt-name">Forkball</span></button>
+        <button class="pt-btn" onclick="pickPT('KN')"><span class="pt-abbr">KN</span><span class="pt-name">Knuckleball</span></button>
+        <button class="pt-btn" onclick="pickPT('EP')"><span class="pt-abbr">EP</span><span class="pt-name">Eephus</span></button>
+        <button class="pt-btn" onclick="pickPT('OT')" style="grid-column:span 2;"><span class="pt-abbr">OT</span><span class="pt-name">Other</span></button>
+      </div>
+      <button id="pt-show-all-btn" onclick="toggleArsenalShowAll()" style="display:none;width:100%;padding:7px;background:none;border:1px solid var(--border2);border-radius:var(--rsm);color:var(--text3);font-size:12px;cursor:pointer;margin-bottom:10px;">Show all pitches</button>
+      <div class="velo-row">
+        <input class="velo-in" type="number" id="velo-in" placeholder="—" min="40" max="115">
+        <span class="velo-lbl">mph &nbsp;(optional)</span>
+      </div>
+    </div>
+
+    <!-- Step 2: result -->
+    <div class="entry-body hidden" id="step2">
+      <!-- Pitch results -->
+      <div style="display:flex;gap:6px;margin-bottom:6px;">
+        <div style="writing-mode:vertical-rl;transform:rotate(180deg);font-size:9px;color:var(--text3);letter-spacing:0.5px;padding:4px 2px;flex-shrink:0;align-self:center;">PITCH</div>
+        <div class="result-grid" style="flex:1;">
+          <button class="r-btn" id="r-strike" onclick="pickR('Take Strike','strike',true,false)">Take Strike</button>
+          <button class="r-btn" id="r-swstr" onclick="pickR('Swing &amp; Miss','swstr',true,false)">Swing &amp; Miss</button>
+          <button class="r-btn" onclick="pickR('Foul Ball','foul',false,false)">Foul Ball</button>
+          <button class="r-btn" onclick="pickR('Ball','ball',false,false)">Ball</button>
+          <button class="r-btn" onclick="pickR('HBP','hbp',false,true)">HBP</button>
+          <button class="r-btn" onclick="pickR('IBB (no pitch)','ibb',false,true)">IBB</button>
+          <button class="r-btn" id="r-bb" onclick="pickR('BB','bb',false,true)">BB</button>
+          <button class="r-btn" id="r-k" onclick="pickR('K (Swing)','k',true,true)">K</button>
+          <button class="r-btn" id="r-kc" onclick="pickR('ꓘ (Called)','kc',true,true)">ꓘ</button>
+          <button class="r-btn" id="d3k-sw" onclick="pickR('Dropped 3K Swing-E2','d3k',true,true)">Drop 3K Swing</button>
+          <button class="r-btn" id="d3k-ca" onclick="pickR('Dropped 3K Called-E2','d3k',true,true)">Drop 3K Called</button>
+          <button class="r-btn" onclick="pickR('Catchers Int.','ci',false,true)">Catcher Int</button>
+        </div>
+      </div>
+
+      <div style="height:1px;background:var(--border);margin:4px 0;"></div>
+
+      <!-- Ground balls -->
+      <div style="display:flex;gap:6px;margin-bottom:6px;margin-top:6px;">
+        <div style="writing-mode:vertical-rl;transform:rotate(180deg);font-size:9px;color:var(--text3);letter-spacing:0.5px;padding:4px 2px;flex-shrink:0;align-self:center;">GROUND</div>
+        <div class="result-grid" style="flex:1;grid-template-columns:repeat(3,1fr);">
+          <button class="r-btn" onclick="pickR('Ground Hit','bip',true,true,'GB','hit')">GB Hit</button>
+          <button class="r-btn" onclick="pickR('Ground Out','bip',true,true,'GB','out')">GB Out</button>
+          <button class="r-btn" onclick="pickR('Ground Error','bip',true,true,'GB','error')">GB Error</button>
+          <button class="r-btn" id="r-sac-bunt" onclick="pickR('SAC Bunt','bip',true,true,'GB','sac')" style="grid-column:span 3;">SAC Bunt</button>
+        </div>
+      </div>
+
+      <div style="height:1px;background:var(--border);margin:4px 0;"></div>
+
+      <!-- Line drives -->
+      <div style="display:flex;gap:6px;margin-bottom:6px;margin-top:6px;">
+        <div style="writing-mode:vertical-rl;transform:rotate(180deg);font-size:9px;color:var(--text3);letter-spacing:0.5px;padding:4px 2px;flex-shrink:0;align-self:center;">LINE</div>
+        <div class="result-grid" style="flex:1;grid-template-columns:repeat(3,1fr);">
+          <button class="r-btn" onclick="pickR('Line Hit','bip',true,true,'LD','hit')">LD Hit</button>
+          <button class="r-btn" onclick="pickR('Line Out','bip',true,true,'LD','out')">LD Out</button>
+          <button class="r-btn" onclick="pickR('Line Error','bip',true,true,'LD','error')">LD Error</button>
+        </div>
+      </div>
+
+      <div style="height:1px;background:var(--border);margin:4px 0;"></div>
+
+      <!-- Fly balls -->
+      <div style="display:flex;gap:6px;margin-bottom:6px;margin-top:6px;">
+        <div style="writing-mode:vertical-rl;transform:rotate(180deg);font-size:9px;color:var(--text3);letter-spacing:0.5px;padding:4px 2px;flex-shrink:0;align-self:center;">FLY</div>
+        <div class="result-grid" style="flex:1;grid-template-columns:repeat(3,1fr);">
+          <button class="r-btn" onclick="pickR('Fly Hit','bip',true,true,'FLY','hit')">Fly Hit</button>
+          <button class="r-btn" onclick="pickR('Fly Out','bip',true,true,'FLY','out')">Fly Out</button>
+          <button class="r-btn" onclick="pickR('Fly Error','bip',true,true,'FLY','error')">Fly Error</button>
+          <button class="r-btn" id="r-sac-fly" onclick="pickR('SAC Fly','bip',true,true,'FLY','sac')">SAC Fly</button>
+          <button class="r-btn" onclick="pickR('Home Run','hr',true,true,'FLY','hr')" style="grid-column:span 2;">Home Run</button>
+        </div>
+      </div>
+
+      <div style="height:1px;background:var(--border);margin:4px 0;"></div>
+
+      <!-- Pop ups -->
+      <div style="display:flex;gap:6px;margin-bottom:6px;margin-top:6px;">
+        <div style="writing-mode:vertical-rl;transform:rotate(180deg);font-size:9px;color:var(--text3);letter-spacing:0.5px;padding:4px 2px;flex-shrink:0;align-self:center;">POP</div>
+        <div class="result-grid" style="flex:1;grid-template-columns:repeat(3,1fr);">
+          <button class="r-btn" onclick="pickR('Pop Up Out','bip',true,true,'PU','out')">PU Out</button>
+          <button class="r-btn" onclick="pickR('Pop Up Error','bip',true,true,'PU','error')">PU Error</button>
+          <button class="r-btn" onclick="pickR('Pop Up Hit','bip',true,true,'PU','hit')">PU Hit</button>
+        </div>
+      </div>
+
+      <div style="height:1px;background:var(--border);margin:4px 0;"></div>
+
+      <!-- Other -->
+      <div style="display:flex;gap:6px;margin-top:6px;">
+        <div style="writing-mode:vertical-rl;transform:rotate(180deg);font-size:9px;color:var(--text3);letter-spacing:0.5px;padding:4px 2px;flex-shrink:0;align-self:center;">MISC</div>
+        <div class="result-grid" style="flex:1;grid-template-columns:repeat(3,1fr);">
+          <button class="r-btn" onclick="pickR('Other - Safe','other',false,true)">Other Safe</button>
+          <button class="r-btn" onclick="pickR('Other - Out','other',false,true)">Other Out</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3: modifiers -->
+    <div class="entry-body hidden" id="step3" style="overflow-y:auto;-webkit-overflow-scrolling:touch;">
+
+      <!-- Spray chart — first for ALL balls in play -->
+      <div id="spray-section-s3" class="hidden" style="margin-bottom:14px;">
+        <div style="font-size:11px;color:var(--text3);text-align:center;margin-bottom:6px;">Tap field to place batted ball</div>
+        <div style="position:relative;width:100%;aspect-ratio:400/260;">
+          <canvas id="spray-mod-cv" style="position:absolute;inset:0;width:100%;height:100%;cursor:crosshair;border:1px solid var(--border2);border-radius:var(--rsm);display:block;"></canvas>
+        </div>
+      </div>
+
+      <!-- BIP modifiers -->
+      <div id="bip-mods" class="hidden">
+
+        <!-- Contact quality — mutually exclusive -->
+        <div style="display:flex;gap:8px;margin-bottom:10px;">
+          <button class="mod-btn" id="mod-wc" onclick="toggleContact('wc')" style="flex:1;">Weak Contact</button>
+          <button class="mod-btn" id="mod-hh" onclick="toggleContact('hh')" style="flex:1;">Hard Hit</button>
+        </div>
+
+        <div style="height:1px;background:var(--border);margin:4px 0 10px;"></div>
+
+        <!-- Play tags -->
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+          <button class="mod-btn" id="mod-dp" onclick="toggleMod('dp')" style="flex:1;min-width:80px;">Double Play</button>
+          <button class="mod-btn" id="mod-fc" onclick="toggleMod('fc')" style="flex:1;min-width:80px;">Fielder's Choice</button>
+        </div>
+
+        <!-- Smart earned/unearned warning -->
+        <div id="earned-suggest" style="display:none;padding:8px 12px;background:rgba(240,135,58,0.1);border:1px solid rgba(240,135,58,0.3);border-radius:var(--rsm);margin-bottom:10px;font-size:12px;color:var(--orange);"></div>
+      </div>
+
+
+      <!-- Unified runner cards — replaces base editor and hit type selector -->
+      <div id="runner-cards-s3" style="margin-bottom:8px;"></div>
+
+      <input type="text" class="note-in" id="mod-note" placeholder="Pitch note (optional)..." style="margin-top:6px;">
+
+      <!-- Scroll indicator -->
+      <div id="scroll-arrow" style="text-align:center;padding:10px 0 4px;color:var(--text3);font-size:20px;transition:opacity 0.2s;">↓</div>
+    </div>
+
+    <div class="entry-foot">
+      <button id="fe-shortcut-btn" onclick="logAndFE()" style="display:none;flex:none;padding:14px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--rsm);color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">Field Event</button>
+      <button class="confirm-btn" id="confirm-btn" onclick="confirmStep()" disabled>Next →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ FIELD EVENT OVERLAY ══ -->
+<div class="overlay" id="fe-ov">
+  <div class="overlay-bg" onclick="hideFieldEvent()"></div>
+  <div class="fe-sheet">
+    <!-- Bases graphic — current state (hidden in step 2) -->
+    <div id="fe-cur-diamond" style="margin-bottom:14px;padding:10px 12px;background:var(--bg3);border-radius:var(--rsm);border:1px solid var(--border);">
+      <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Runners on Base</div>
+      <div style="display:flex;justify-content:center;">
+        <div style="position:relative;width:130px;height:96px;">
+          <div id="fe-b2b" style="position:absolute;width:34px;height:34px;top:0;left:50%;transform:translateX(-50%) rotate(45deg);border:2px solid var(--text3);background:var(--bg4);border-radius:2px;">
+            <span id="fe-b2b-num" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;transform:rotate(-45deg);font-size:10px;font-weight:700;color:var(--text2);"></span>
+          </div>
+          <div id="fe-b1b" style="position:absolute;width:34px;height:34px;bottom:0;right:0;transform:rotate(45deg);border:2px solid var(--text3);background:var(--bg4);border-radius:2px;">
+            <span id="fe-b1b-num" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;transform:rotate(-45deg);font-size:10px;font-weight:700;color:var(--text2);"></span>
+          </div>
+          <div id="fe-b3b" style="position:absolute;width:34px;height:34px;bottom:0;left:0;transform:rotate(45deg);border:2px solid var(--text3);background:var(--bg4);border-radius:2px;">
+            <span id="fe-b3b-num" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;transform:rotate(-45deg);font-size:10px;font-weight:700;color:var(--text2);"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 1: Event type selection -->
+    <div id="fe-step1">
+      <div class="fe-title">Field Event</div>
+      <div class="fe-grid">
+        <button class="fe-btn" onclick="selectFE('Stolen Base')">Stolen Base</button>
+        <button class="fe-btn" onclick="selectFE('Wild Pitch')">Wild Pitch</button>
+        <button class="fe-btn" onclick="selectFE('Passed Ball')">Passed Ball</button>
+        <button class="fe-btn" onclick="selectFE('Pickoff')">Pickoff</button>
+        <button class="fe-btn" onclick="selectFE('Balk')">Balk</button>
+        <button class="fe-btn" onclick="selectFE('Caught Stealing')">Caught Stealing</button>
+        <button class="fe-btn" onclick="selectFE('Runner Out')">Runner Out</button>
+        <button class="fe-btn" onclick="selectFE('Clock-Pitcher')">Pitch Clock (P)</button>
+        <button class="fe-btn" onclick="selectFE('Clock-Batter')">Pitch Clock (B)</button>
+        <button class="fe-btn" onclick="selectFE('IBB')">Int. Walk (IBB)</button>
+        <button class="fe-btn fe-danger" onclick="showPitcherChange()">Pitcher Change</button>
+      </div>
+      <button class="btn btn-block" style="margin-top:12px;" onclick="hideFieldEvent()">Cancel</button>
+    </div>
+
+    <!-- Step 2: Runner management -->
+    <div id="fe-step2" style="display:none;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+        <button onclick="feBackToStep1()" style="background:none;border:none;color:var(--accent);font-size:14px;font-weight:600;cursor:pointer;padding:0;flex-shrink:0;">← Back</button>
+        <div class="fe-title" id="fe-s2-title" style="margin:0;flex:1;font-size:15px;">Move Runners</div>
+      </div>
+      <div id="fe-runner-cards" style="margin-bottom:12px;"></div>
+      <button class="btn btn-primary btn-block" onclick="confirmFEMoves()">Confirm</button>
+      <button class="btn btn-block" style="margin-top:8px;" onclick="hideFieldEvent()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ ANALYTICS ══ -->
+<div id="screen-analytics" class="screen">
+  <div class="nav">
+    <div class="nav-back" onclick="analyticsBack()">← Back</div>
+    <div class="nav-title" id="an-nav-title">Analytics</div>
+    <div class="menu-btn" onclick="showHam()" style="font-size:18px;">☰</div>
+  </div>
+  <div id="an-body" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;"></div>
+</div>
+
+<!-- ══ STATS ══ -->
+<div id="screen-stats" class="screen">
+  <div class="nav">
+    <div class="nav-back" onclick="statsBack()">← Back</div>
+    <div class="nav-title">Stats</div>
+    <div class="menu-btn" onclick="showHam()" style="font-size:18px;">☰</div>
+  </div>
+  <div id="st-body" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;"></div>
+</div>
+
+<!-- ══ COMMAND (Intended vs. Actual) ══ -->
+<div id="screen-command" class="screen">
+  <div class="nav">
+    <div class="nav-back" onclick="cmdBack()">← Back</div>
+    <div class="nav-title">Command</div>
+    <div class="menu-btn" onclick="showHam()" style="font-size:18px;">☰</div>
+  </div>
+  <div id="cmd-body" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;"></div>
+</div>
+
+<!-- ══ PITCH VIEW ══ -->
+<div id="screen-pitchview" class="screen">
+  <div class="nav">
+    <div class="nav-back" onclick="pvBack()">← Back</div>
+    <div class="nav-title" id="pv-nav-title" style="font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px;">Pitch View</div>
+    <div style="width:60px;"></div>
+  </div>
+  <div id="pv-body" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;"></div>
+</div>
+
+<!-- ══ PRACTICE HOME ══ -->
+<div id="screen-practice" class="screen" style="overflow:hidden;background:#000;">
+  <div class="home-header-band">
+    <img src="Header.jpeg" alt="Cipher">
+  </div>
+  <div class="home-body-new" id="prac-home-body"></div>
+  <div class="prac-bottom-bar">
+    <button class="prac-bottom-btn" onclick="go('my-team')">My Team</button>
+    <button class="prac-bottom-btn" onclick="showSettings()">Settings</button>
+  </div>
+</div>
+
+<!-- ══ PRACTICE SETUP ══ -->
+<div id="screen-practice-setup" class="screen">
+  <div class="nav">
+    <span class="nav-back" onclick="pracSetupBack()">← Back</span>
+    <span class="nav-title" id="prac-setup-title">Select Mode</span>
+    <span class="nav-act" id="prac-setup-next" onclick="pracSetupNext()" style="display:none;">Next →</span>
+  </div>
+  <div class="scroll" id="prac-setup-body"></div>
+</div>
+
+<!-- ══ PRACTICE SESSION ══ -->
+<div id="screen-practice-session" class="screen">
+  <div class="nav">
+    <span class="nav-back" onclick="pracSessionEnd()">End</span>
+    <span class="nav-title" id="prac-session-title">Practice</span>
+    <span id="prac-sess-switch" class="nav-act" onclick="pracSwitchPitcher()" style="display:none;">Switch</span>
+  </div>
+  <div id="prac-context-bars"></div>
+  <div class="prac-sess-top">
+    <div>
+      <div class="prac-sess-pitcher" id="prac-sess-pitcher">—</div>
+      <div class="prac-sess-count" id="prac-sess-count">Pitch 1</div>
+    </div>
+    <div id="prac-score-row" class="prac-score-row" style="display:none;"></div>
+  </div>
+  <div class="prac-zone-area">
+    <div id="prac-intended-hint" class="prac-intended-hint" style="display:none;">Tap intended location</div>
+    <canvas id="prac-zone-cv" style="width:100%;height:100%;display:block;touch-action:none;cursor:crosshair;"></canvas>
+  </div>
+  <div class="prac-type-row" id="prac-type-row"></div>
+  <div class="prac-result-row" id="prac-result-row"></div>
+  <div class="prac-foot">
+    <button class="prac-undo-btn" onclick="pracUndo()">Undo</button>
+    <button class="prac-repeat-btn" id="prac-repeat-btn" onclick="pracRepeatPitch()" disabled style="display:none">Repeat</button>
+    <button class="prac-confirm-btn" id="prac-confirm-btn" onclick="pracConfirmPitch()" disabled>Log Pitch</button>
+  </div>
+</div>
+
+<!-- ══ INTENDED LOCATION OVERLAY ══ -->
+<div id="intended-ov" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,0.82);flex-direction:column;align-items:center;justify-content:center;">
+  <div style="background:var(--bg);border-radius:var(--r);width:92vw;max-width:380px;padding:20px 18px 24px;box-shadow:0 10px 40px rgba(0,0,0,0.6);">
+    <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:4px;">Intended Location?</div>
+    <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:14px;" id="int-pitch-label">—</div>
+    <canvas id="int-zone-cv" width="240" height="270" style="display:block;width:100%;aspect-ratio:240/270;border-radius:var(--rsm);margin-bottom:12px;touch-action:none;"></canvas>
+    <div style="display:flex;gap:8px;">
+      <button onclick="intendedSameSpot()" style="flex:1;padding:12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--rsm);font-size:13px;font-weight:600;color:var(--text);cursor:pointer;">Same spot ✓</button>
+      <button id="int-confirm-btn" onclick="intendedConfirm()" style="flex:1.4;padding:12px;background:var(--accent);border:none;border-radius:var(--rsm);font-size:13px;font-weight:600;color:#fff;cursor:pointer;opacity:0.5;" disabled>Confirm →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ HAMBURGER MENU ══ -->
+<div class="ham-ov" id="ham-ov">
+  <div class="ham-panel">
+    <div class="ham-hdr" style="padding:0;">
+      <img src="Header.jpeg" alt="Cipher" style="display:block;width:100%;">
+    </div>
+    <div class="ham-item" onclick="navTo('home')">
+      <span class="ham-item-label">Home</span>
+    </div>
+    <div class="ham-item" onclick="navTo('game')">
+      <span class="ham-item-label">Live Game</span>
+    </div>
+    <div class="ham-item" onclick="navTo('stats')">
+      <span class="ham-item-label">Stats</span>
+    </div>
+    <div class="ham-item" onclick="navTo('analytics')">
+      <span class="ham-item-label">Analytics</span>
+    </div>
+    <div class="ham-item" onclick="navTo('command')">
+      <span class="ham-item-label">Command</span>
+    </div>
+    <div class="ham-item" onclick="hideHam();go('practice');">
+      <span class="ham-item-label">Practice Mode</span>
+    </div>
+    <div class="ham-item" onclick="showSettings()">
+      <span class="ham-item-label">Settings</span>
+    </div>
+    <div style="margin-top:auto;border-top:1px solid var(--border);">
+      <div id="ham-track-intended" style="display:none;border-bottom:1px solid var(--border);">
+        <div class="ham-item" onclick="toggleTrackIntended()">
+          <span class="ham-item-label" id="ham-ti-label">Track Intended</span>
+          <span id="ham-ti-badge" style="font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px;margin-left:auto;"></span>
+        </div>
+      </div>
+      <div id="ham-end-game" style="display:none;border-bottom:1px solid var(--border);">
+        <div class="ham-item" onclick="hideHam();endGame();">
+          <span class="ham-item-label" style="color:var(--red);">End Game</span>
+        </div>
+      </div>
+      <div class="ham-item" onclick="exportCurrentGame()">
+        <span class="ham-item-label" style="color:var(--text3);">Export Game</span>
+      </div>
+    </div>
+  </div>
+  <div class="ham-dim" onclick="hideHam()"></div>
+</div>
+
+<!-- ══ MODAL ══ -->
+<div class="modal-wrap" id="modal">
+  <div class="modal-bg" onclick="hideModal()"></div>
+  <div class="modal-sheet">
+    <div class="modal-head">
+      <div class="modal-title" id="modal-title">—</div>
+      <div class="modal-x" id="modal-x" onclick="hideModal()">✕</div>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<!-- ══ INNING SUMMARY MODAL ══ -->
+<div class="modal-wrap" id="inning-modal">
+  <div class="modal-bg"></div>
+  <div class="modal-sheet">
+    <div class="modal-head">
+      <div class="modal-title" id="inning-modal-title">End of Inning</div>
+      <div class="modal-x" onclick="hideInningSummary()">✕</div>
+    </div>
+    <div class="modal-body" id="inning-modal-body"></div>
+    <div style="padding:10px 16px 24px;display:flex;gap:10px;flex-shrink:0;">
+      <button class="btn btn-block" onclick="editLastPitchFromSummary()">← Edit Last Pitch</button>
+      <button class="btn btn-primary btn-block" onclick="nextInning()">Next Inning →</button>
+    </div>
+  </div>
+</div>
+
+<script src="data.js"></script>
+<script src="ui.js"></script>
+<script src="roster.js"></script>
+<script src="game.js"></script>
+<script src="analytics.js"></script>
+<script src="practice.js"></script>
+<script src="ai.js"></script>
+<script>
+// Resume active game
+if(S.activeId){
+  G=S.games.find(g=>g.id===S.activeId)||null;
+  if(G){
+    const resume=confirm('Resume game vs. '+G.opp+'?');
+    if(resume){ requestWakeLock(); go('game'); }
+    else{ S.activeId=null; G=null; save(); renderHome(); }
+  } else { renderHome(); }
+} else { renderHome(); }
+</script>
+</body>
+</html>
