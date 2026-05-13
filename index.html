@@ -779,30 +779,28 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
     <!-- Step 2: result -->
     <div class="entry-body hidden" id="step2">
       <!-- Pitch results -->
-      <div style="display:flex;gap:6px;margin-bottom:6px;">
-        <div style="writing-mode:vertical-rl;transform:rotate(180deg);font-size:9px;color:var(--text3);letter-spacing:0.5px;padding:4px 2px;flex-shrink:0;align-self:center;">PITCH</div>
-        <div class="result-grid" style="flex:1;">
+      <div style="margin-bottom:6px;">
+        <div style="text-align:center;font-size:9px;color:var(--text3);letter-spacing:0.5px;margin-bottom:5px;">PITCH</div>
+        <div class="result-grid">
           <button class="r-btn" id="r-strike" onclick="pickR('Take Strike','strike',true,false,null,null,false)">Take Strike</button>
           <button class="r-btn" id="r-swstr" onclick="pickR('Swing &amp; Miss','swstr',true,false,null,null,true)">Swing &amp; Miss</button>
           <button class="r-btn" onclick="pickR('Foul Ball','foul',false,false,null,null,true)">Foul Ball</button>
-          <button class="r-btn" onclick="pickR('Ball','ball',false,false,null,null,false)">Ball</button>
+          <button class="r-btn" id="r-ball" onclick="pickR('Ball','ball',false,false,null,null,false)">Ball</button>
           <button class="r-btn" onclick="pickR('HBP','hbp',false,true,null,null,false)">HBP</button>
-          <button class="r-btn" onclick="pickR('IBB (no pitch)','ibb',false,true,null,null,false)">IBB</button>
-          <button class="r-btn" id="r-bb" onclick="pickR('BB','bb',false,true,null,null,false)">BB</button>
+<button class="r-btn" id="r-bb" onclick="pickR('BB','bb',false,true,null,null,false)">BB</button>
           <button class="r-btn" id="r-k" onclick="pickR('K (Swing)','k',true,true,null,null,true)">K</button>
           <button class="r-btn" id="r-kc" onclick="pickR('ꓘ (Called)','kc',true,true,null,null,false)">ꓘ</button>
           <button class="r-btn" id="d3k-sw" onclick="pickD3K(true)">Drop 3K Swing</button>
           <button class="r-btn" id="d3k-ca" onclick="pickD3K(false)">Drop 3K Called</button>
-          <button class="r-btn" onclick="pickR('Catchers Int.','ci',false,true,null,null,false)">Catcher Int</button>
         </div>
       </div>
 
-      <div style="height:1px;background:var(--border);margin:4px 0;"></div>
+      <div style="height:1px;background:var(--border);margin:10px 0;"></div>
 
       <!-- Contact type (Section B) -->
-      <div style="display:flex;gap:6px;margin-bottom:6px;margin-top:6px;">
-        <div style="writing-mode:vertical-rl;transform:rotate(180deg);font-size:9px;color:var(--text3);letter-spacing:0.5px;padding:4px 2px;flex-shrink:0;align-self:center;">CONTACT</div>
-        <div class="result-grid" style="flex:1;grid-template-columns:repeat(3,1fr);">
+      <div style="margin-bottom:6px;">
+        <div style="text-align:center;font-size:9px;color:var(--text3);letter-spacing:0.5px;margin-bottom:5px;">CONTACT</div>
+        <div class="result-grid" style="grid-template-columns:repeat(3,1fr);">
           <button class="r-btn" id="r-gb"   onclick="pickContact('GB')">GB</button>
           <button class="r-btn" id="r-ld"   onclick="pickContact('LD')">LD</button>
           <button class="r-btn" id="r-fly"  onclick="pickContact('FLY')">Fly Ball</button>
@@ -812,14 +810,15 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
         </div>
       </div>
 
-      <div style="height:1px;background:var(--border);margin:4px 0;"></div>
+      <div style="height:1px;background:var(--border);margin:10px 0;"></div>
 
       <!-- Other -->
-      <div style="display:flex;gap:6px;margin-top:6px;">
-        <div style="writing-mode:vertical-rl;transform:rotate(180deg);font-size:9px;color:var(--text3);letter-spacing:0.5px;padding:4px 2px;flex-shrink:0;align-self:center;">MISC</div>
-        <div class="result-grid" style="flex:1;grid-template-columns:repeat(3,1fr);">
+      <div>
+        <div style="text-align:center;font-size:9px;color:var(--text3);letter-spacing:0.5px;margin-bottom:5px;">MISC</div>
+        <div class="result-grid" style="grid-template-columns:repeat(3,1fr);">
           <button class="r-btn" onclick="pickR('Other - Safe','other',false,true,null,'other',false)">Other Safe</button>
           <button class="r-btn" onclick="pickR('Other - Out','other',false,true,null,'other',false)">Other Out</button>
+          <button class="r-btn" onclick="pickR('Catchers Int.','ci',false,true,null,null,false)">Catcher Int</button>
         </div>
       </div>
     </div>

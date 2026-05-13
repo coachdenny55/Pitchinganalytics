@@ -1054,6 +1054,7 @@ function showEntryStep(s){
     setRBtn('r-bb',      _bal<3);
     setRBtn('d3k-sw',    _str<2||(_r.b1&&_out<2));
     setRBtn('d3k-ca',    _str<2||(_r.b1&&_out<2));
+    setRBtn('r-ball',    _bal>=3);
   } else if(s===3){
     cb.textContent='Log Pitch ✓'; cb.disabled=false;
     const isBIP=CE.rt==='bip'||CE.rt==='hr';
@@ -1926,6 +1927,8 @@ function initRC(context,containerId,opts){
     else if(isHR){ dests={b1:'score',b2:'score',b3:'score'}; }
     else if(isWalk){ dests=_rcRunnerDests(0,true,pre,null); }
     // K, D3K (live ball), Other: all stayed — dests stays {}
+    // D3K reach + runner on first only + 2 outs: batter takes 1b, b1 runner must advance
+    if(rt==='d3k' && !d3kOut && pre.b1 && !pre.b2 && !pre.b3 && outs===2){ dests.b1='2b'; }
 
     [{key:'b3',base:'3B',runner:pre.b3},{key:'b2',base:'2B',runner:pre.b2},{key:'b1',base:'1B',runner:pre.b1}].forEach(({key,base,runner})=>{
       if(!runner)return;

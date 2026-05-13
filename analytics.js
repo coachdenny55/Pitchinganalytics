@@ -604,7 +604,7 @@ function _renderGenMatrix(pitches,def,matrixId){
   if(!rowsPresent.length) return `<div style="text-align:center;padding:30px 20px;color:var(--text2);font-size:14px;">No data for this view with current filters.</div>`;
   const ml=col=>col.gapLeft?`${col.gapLeft}px`:'1px';
   const extraGap=colDefs.reduce((a,col)=>a+(col.gapLeft||1)-1,0);
-  const hdrCells=colDefs.map(col=>`<div style="width:${CW}px;flex-shrink:0;text-align:center;font-size:10px;font-weight:700;color:var(--text2);padding:5px 2px;margin:1px 1px 1px ${ml(col)};line-height:1.3;">${col.label.replace('\n','<br>')}</div>`).join('');
+  const hdrCells=colDefs.map(col=>`<div style="width:${CW}px;flex-shrink:0;text-align:center;font-size:10px;font-weight:700;color:#000;padding:5px 2px;margin:1px 1px 1px ${ml(col)};line-height:1.3;">${col.label.replace('\n','<br>')}</div>`).join('');
   const dataRows=rowsPresent.map(rowId=>{
     let rowLabel,rowSub;
     if(isCountPt){
@@ -626,7 +626,7 @@ function _renderGenMatrix(pitches,def,matrixId){
     }).join('');
     return `<div style="display:flex;align-items:center;margin-bottom:2px;">
       <div style="width:${LW}px;flex-shrink:0;padding-right:6px;">
-        <div style="font-size:12px;font-weight:800;color:var(--text);">${rowLabel}</div>
+        <div style="font-size:12px;font-weight:800;color:#000;">${rowLabel}</div>
         <div style="font-size:10px;color:var(--text3);">${rowSub}</div>
       </div>
       <div style="display:flex;">${rowCells}</div>
