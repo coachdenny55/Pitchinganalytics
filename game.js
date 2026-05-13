@@ -1012,7 +1012,8 @@ document.getElementById('spray-mod-cv').addEventListener('click',function(e){
 // ══════════════════════════════════════════
 // ENTRY FLOW
 // ══════════════════════════════════════════
-let CE={pt:null,velo:null,result:null,rt:null,isStrike:false,isTerm:false,bipType:null,bipOut:null,hh:false,wc:false,dp:false,fc:false,ro:false,roBase:null,roRunner:null,sx:null,sy:null,zx:null,zy:null,izx:null,izy:null,note:'',er:0,ur:0,hitBases:0,scoredRunners:[]};
+let CE={pt:null,velo:null,result:null,rt:null,isStrike:false,isTerm:false,bipType:null,bipOut:null,hh:false,wc:false,dp:false,fc:false,ro:false,roBase:null,roRunner:null,sx:null,sy:null,zx:null,zy:null,izx:null,izy:null,note:'',er:0,ur:0,hitBases:0,scoredRunners:[],swing:false,d3kCause:null,d3kOut:false};
+let _d3kSwing=false;
 let eStep=0;
 let preHitRunners=null;
 
@@ -1053,8 +1054,6 @@ function showEntryStep(s){
     setRBtn('r-bb',      _bal<3);
     setRBtn('d3k-sw',    _str<2||(_r.b1&&_out<2));
     setRBtn('d3k-ca',    _str<2||(_r.b1&&_out<2));
-    setRBtn('r-sac-fly', _out>=2||!_hasR);
-    setRBtn('r-sac-bunt',_out>=2);
   } else if(s===3){
     cb.textContent='Log Pitch ✓'; cb.disabled=false;
     const isBIP=CE.rt==='bip'||CE.rt==='hr';
@@ -1080,7 +1079,8 @@ function showEntryStep(s){
     if(CE.isTerm){
       initRC('s3','runner-cards-s3',{
         rt:CE.rt, bipOut:CE.bipOut, bipType:CE.bipType,
-        hitBases:prevHitBases||1, result:CE.result||''
+        hitBases:prevHitBases||1, result:CE.result||'',
+        d3kOut:CE.d3kOut, d3kCause:CE.d3kCause, swing:CE.swing
       });
     } else {
       const rcEl=document.getElementById('runner-cards-s3');
@@ -1208,17 +1208,88 @@ function pickPT(type){
   document.getElementById('confirm-btn').disabled=false;
 }
 
-function pickR(result,rt,isStrike,isTerm,bipType,bipOut){
+function pickR(result,rt,isStrike,isTerm,bipType,bipOut,swing){
   // Auto-convert to strikeout if 2 strikes and this is a strike (not foul/BIP)
   if(G.strikes>=2 && isStrike && !isTerm && rt!=='foul' && rt!=='bip'){
     rt='k'; isTerm=true; result='K (Swing)';
   }
   CE.result=result; CE.rt=rt; CE.isStrike=isStrike; CE.isTerm=isTerm||false;
   CE.bipType=bipType||null; CE.bipOut=bipOut||null;
+  CE.swing=swing??false; CE.d3kCause=null; CE.d3kOut=false;
   document.querySelectorAll('.r-btn').forEach(b=>b.classList.remove('on'));
   event.currentTarget.classList.add('on');
   document.getElementById('confirm-btn').disabled=false;
   updateFEShortcut();
+}
+
+function pickD3K(isSwing){
+  _d3kSwing=isSwing;
+  document.getElementById('d3k-header').textContent='Drop 3K — '+(isSwing?'Swing':'Called');
+  document.getElementById('d3k-ov').classList.add('on');
+}
+
+function pickD3KResult(outcome){
+  document.getElementById('d3k-ov').classList.remove('on');
+  CE.isStrike=true; CE.isTerm=true; CE.swing=_d3kSwing;
+  if(outcome==='out'){
+    CE.rt=_d3kSwing?'k':'kc';
+    CE.result=_d3kSwing?'K':'ꓘ (Called)';
+    CE.d3kCause=null; CE.d3kOut=true;
+  } else {
+    CE.rt='d3k'; CE.d3kOut=false;
+    CE.d3kCause=outcome;
+    CE.result=_d3kSwing?('K (drop, '+outcome.toUpperCase()+')')
+                        :('ꓘ (drop, '+outcome.toUpperCase()+')');
+  }
+  document.querySelectorAll('.r-btn').forEach(b=>b.classList.remove('on'));
+  const b=document.getElementById(_d3kSwing?'d3k-sw':'d3k-ca');
+  if(b) b.classList.add('on');
+  document.getElementById('confirm-btn').disabled=false;
+  showEntryStep(3);
+}
+
+function cancelD3K(){
+  document.getElementById('d3k-ov').classList.remove('on');
+}
+
+let _contactBipType=null;
+const _contactLabels={GB:'Ground Ball',LD:'Line Drive',FLY:'Fly Ball',PU:'Pop-Up',BUNT:'Bunt'};
+const _contactShort={GB:'GB',LD:'LD',FLY:'Fly',PU:'PU',BUNT:'Bunt'};
+
+function pickContact(bipType){
+  _contactBipType=bipType;
+  document.getElementById('disp-header').textContent=(_contactLabels[bipType]||bipType)+' → ?';
+  document.getElementById('disp-ov').classList.add('on');
+}
+
+function pickDisposition(bipOut){
+  document.getElementById('disp-ov').classList.remove('on');
+  const bipType=_contactBipType;
+  const short=_contactShort[bipType]||bipType;
+  const dispLabel={hit:'Hit',out:'Out',fc:'FC',error:'Error'}[bipOut]||bipOut;
+  CE.result=short+' '+dispLabel;
+  CE.rt='bip'; CE.isStrike=true; CE.isTerm=true;
+  CE.bipType=bipType; CE.bipOut=bipOut; CE.swing=true;
+  CE.d3kCause=null; CE.d3kOut=false;
+  document.querySelectorAll('.r-btn').forEach(b=>b.classList.remove('on'));
+  const id='r-'+bipType.toLowerCase();
+  const btn=document.getElementById(id);
+  if(btn) btn.classList.add('on');
+  document.getElementById('confirm-btn').disabled=false;
+  showEntryStep(3);
+}
+
+function cancelDisposition(){
+  document.getElementById('disp-ov').classList.remove('on');
+}
+
+function pickHR(){
+  CE.result='Home Run'; CE.rt='hr'; CE.isStrike=true; CE.isTerm=true;
+  CE.bipType=null; CE.bipOut=null; CE.swing=true;
+  CE.fc=false; CE.d3kCause=null; CE.d3kOut=false;
+  document.querySelectorAll('.r-btn').forEach(b=>b.classList.remove('on'));
+  document.getElementById('confirm-btn').disabled=false;
+  showEntryStep(3);
 }
 
 function toggleMod(m){
@@ -1344,7 +1415,7 @@ function getReachedVia(){
   if(CE.rt==='bb'||CE.rt==='ibb') return 'bb';
   if(CE.rt==='hbp') return 'hbp';
   if(CE.rt==='ci') return 'bb';
-  if(CE.rt==='d3k') return 'error';
+  if(CE.rt==='d3k') return CE.d3kCause==='pb'?'d3k_pb':'d3k_wp';
   if(CE.bipOut==='error') return 'error';
   return 'hit';
 }
@@ -1473,8 +1544,10 @@ function confirmStep(){
   } else if(eStep===2){
     if(!CE.result)return;
     const simple=['ball','strike','foul','swstr'].includes(CE.rt);
-    if(simple){ logPitch(); }
-    else{ showEntryStep(3); }
+    if(simple){ logPitch(); return; }
+    const noRunners=G&&!G.runners.b1&&!G.runners.b2&&!G.runners.b3;
+    if((CE.rt==='k'||CE.rt==='kc')&&noRunners){ logPitch(); return; }
+    showEntryStep(3);
   } else if(eStep===3){
     CE.note=document.getElementById('mod-note').value;
     if(CE.isTerm) applyRCMoves();
@@ -1484,6 +1557,16 @@ function confirmStep(){
 
 function logPitch(){
   if(!G)return;
+  // Derive SAC: Bunt or Fly Out, <2 outs, at least one runner advanced past their start base
+  if(CE.rt==='bip'&&CE.bipOut==='out'&&(CE.bipType==='BUNT'||CE.bipType==='FLY')&&G.outs<2){
+    const dOrd={'1b':1,'2b':2,'3b':3,'score':4};
+    const sOrd={'1B':1,'2B':2,'3B':3};
+    const anyAdvanced=RC.entries.some(e=>{
+      if(e.key==='batter'||!e.dest||e.dest==='out') return false;
+      return (dOrd[e.dest]||0)>(sOrd[e.startBase]||0);
+    });
+    if(anyAdvanced) CE.bipOut='sac';
+  }
   const p=curP();
   const pitch={
     id:'p_'+Date.now()+'_'+Math.random().toString(36).substr(2,4),
@@ -1498,9 +1581,10 @@ function logPitch(){
     result:CE.result, rt:CE.rt,
     isStrike:CE.isStrike, isTerm:CE.isTerm,
     bipType:CE.bipType, bipOut:CE.bipOut,
-    hh:CE.hh, wc:CE.wc, dp:CE.dp, fc:CE.fc, ro:CE.ro, hitBases:CE.hitBases,
+    hh:CE.hh, wc:CE.wc, dp:CE.dp, fc:CE.bipOut==='fc', ro:CE.ro, hitBases:CE.hitBases,
     sx:CE.sx, sy:CE.sy, zx:CE.zx, zy:CE.zy, izx:CE.izx, izy:CE.izy,
     note:CE.note, er:CE.er, ur:CE.ur,
+    swing:CE.swing, d3kCause:CE.d3kCause,
     scoredRunners:CE.scoredRunners.slice(),
     ts:Date.now()
   };
@@ -1522,7 +1606,7 @@ function logPitch(){
   advanceCount(pitch);
   pendingZX=null; pendingZY=null; zoneConfirmed=false;
   sprayModDot=null;
-  CE={pt:null,velo:null,result:null,rt:null,isStrike:false,isTerm:false,bipType:null,bipOut:null,hh:false,wc:false,dp:false,fc:false,ro:false,sx:null,sy:null,zx:null,zy:null,izx:null,izy:null,note:'',er:0,ur:0,hitBases:0,scoredRunners:[]};
+  CE={pt:null,velo:null,result:null,rt:null,isStrike:false,isTerm:false,bipType:null,bipOut:null,hh:false,wc:false,dp:false,fc:false,ro:false,sx:null,sy:null,zx:null,zy:null,izx:null,izy:null,note:'',er:0,ur:0,hitBases:0,scoredRunners:[],swing:false,d3kCause:null,d3kOut:false};
   cancelEntry();
   save(); renderGame();
 }
@@ -1609,7 +1693,7 @@ function renderInningSummary(){
     const g=groups[key];
     g.pitches++;
     if(p.isStrike) g.strikes++;
-    if(p.rt==='k'||p.rt==='kc') g.k++;
+    if(p.rt==='k'||p.rt==='kc'||p.rt==='d3k') g.k++;
     if(p.rt==='bb'||p.rt==='ibb'||p.rt==='hbp') g.bb++;
     if(p.bipOut==='hit'||p.rt==='hr') g.h++;
     g.er+=(p.er||0);
@@ -1788,27 +1872,61 @@ function initRC(context,containerId,opts){
   if(context==='s3'){
     const pre=G?{b1:G.runners.b1,b2:G.runners.b2,b3:G.runners.b3}:{b1:null,b2:null,b3:null};
     preHitRunners=pre;
-    const rt=opts.rt,bipOut=opts.bipOut,bipType=opts.bipType,hitBases=opts.hitBases||1,result=opts.result||'';
-    const isHit=rt==='bip'&&bipOut==='hit';
-    const isError=rt==='bip'&&bipOut==='error';
-    const isSac=rt==='bip'&&bipOut==='sac';
+    const rt=opts.rt, bipOut=opts.bipOut, bipType=opts.bipType, hitBases=opts.hitBases||1, result=opts.result||'';
+    const d3kOut=opts.d3kOut===true, d3kCause=opts.d3kCause||null, d3kSwing=opts.swing===true;
+    const outs=G?G.outs:0;
+    const isD3KAny=rt==='d3k'||d3kOut;
+    const isBIP=rt==='bip';
+    const isHit=isBIP&&bipOut==='hit';
+    const isBIPOut=isBIP&&bipOut==='out';
+    const isFC=isBIP&&bipOut==='fc';
+    const isError=isBIP&&bipOut==='error';
     const isWalk=rt==='bb'||rt==='hbp'||rt==='ibb'||rt==='ci';
-    const isD3K=rt==='d3k';
     const isHR=rt==='hr';
-    const isOtherSafe=rt==='other'&&!result.includes('Out');
-    const batterSafe=isHit||isError||isWalk||isD3K||isHR||isOtherSafe;
-    if(batterSafe){
-      const rv=(isError||isD3K)?'error':isWalk?(rt==='hbp'?'hbp':(rt==='ibb'?'ibb':'bb')):isHR?'hr':'hit';
-      const bd=isHR?'score':(isWalk||isD3K||isError)?'1b':(isHit?(hitBases===3?'3b':hitBases===2?'2b':'1b'):'1b');
-      RC.entries.push({key:'batter',runner:makeRunner(curB(),rv),startBase:null,dest:bd,fixed:isWalk||isD3K||isError||isHR,advErr:false,earnedOverride:null,autoSet:true});
-      if(isHit){
-        const initLabel={1:'Single',2:'Double',3:'Triple'}[bd==='3b'?3:bd==='2b'?2:1]||'Single';
-        CE.result=(CE.result||'').replace(/\s*·\s*(Single|Double|Triple)/,'')+' · '+initLabel;
+    const isK=rt==='k'||rt==='kc';
+    const isOther=rt==='other';
+    const isOtherSafe=isOther&&!result.includes('Out');
+
+    // Batter card
+    if(isD3KAny){
+      let rv, bd, label;
+      if(d3kOut){
+        rv='error'; bd='out'; label=d3kSwing?'K':'ꓘ';
+      } else {
+        rv=d3kCause==='pb'?'d3k_pb':'d3k_wp';
+        bd='1b';
+        label=d3kSwing?('K (drop, '+d3kCause.toUpperCase()+')')
+                       :('ꓘ (drop, '+d3kCause.toUpperCase()+')');
       }
+      RC.entries.push({key:'batter',label,runner:makeRunner(curB(),rv),startBase:null,dest:bd,fixed:false,advErr:false,earnedOverride:null,autoSet:true,extendedDests:true});
+    } else if(isBIP){
+      let rv, bd;
+      if(isHit){
+        rv='hit'; bd=hitBases===3?'3b':hitBases===2?'2b':'1b';
+        const initLabel={1:'Single',2:'Double',3:'Triple'}[hitBases]||'Single';
+        CE.result=(CE.result||'').replace(/\s*·\s*(Single|Double|Triple)/,'')+' · '+initLabel;
+      } else if(isBIPOut){ rv='other'; bd='out'; }
+      else if(isFC){ rv='fc'; bd='1b'; }
+      else { rv='error'; bd='1b'; } // error (and legacy sac)
+      RC.entries.push({key:'batter',label:null,runner:makeRunner(curB(),rv),startBase:null,dest:bd,fixed:false,advErr:false,earnedOverride:null,autoSet:true,extendedDests:true});
+    } else if(isWalk){
+      const rv=rt==='hbp'?'hbp':(rt==='ibb'?'ibb':'bb');
+      RC.entries.push({key:'batter',label:null,runner:makeRunner(curB(),rv),startBase:null,dest:'1b',fixed:true,advErr:false,earnedOverride:null,autoSet:true,extendedDests:false});
+    } else if(isHR){
+      RC.entries.push({key:'batter',label:null,runner:makeRunner(curB(),'hr'),startBase:null,dest:'score',fixed:true,advErr:false,earnedOverride:null,autoSet:true,extendedDests:false});
+    } else if(isK){
+      RC.entries.push({key:'batter',label:null,runner:makeRunner(curB(),'other'),startBase:null,dest:'out',fixed:true,advErr:false,earnedOverride:null,autoSet:true,extendedDests:false});
+    } else if(isOther){
+      RC.entries.push({key:'batter',label:null,runner:makeRunner(curB(),'other'),startBase:null,dest:isOtherSafe?'1b':'out',fixed:false,advErr:false,earnedOverride:null,autoSet:true,extendedDests:true});
     }
-    const sacType=isSac?(bipType==='FLY'?'fly':'bunt'):null;
-    const advBases=isHit?hitBases:isHR?4:isError?1:0;
-    const dests=_rcRunnerDests(advBases,(isWalk||isD3K),pre,sacType);
+
+    // Runner destination pre-fills
+    let dests={};
+    if(isBIP){ dests=_rcBipPreFill(bipType,bipOut,pre,outs); }
+    else if(isHR){ dests={b1:'score',b2:'score',b3:'score'}; }
+    else if(isWalk){ dests=_rcRunnerDests(0,true,pre,null); }
+    // K, D3K (live ball), Other: all stayed — dests stays {}
+
     [{key:'b3',base:'3B',runner:pre.b3},{key:'b2',base:'2B',runner:pre.b2},{key:'b1',base:'1B',runner:pre.b1}].forEach(({key,base,runner})=>{
       if(!runner)return;
       RC.entries.push({key,runner,startBase:base,dest:dests[key]||null,fixed:isHR,advErr:false,earnedOverride:null,autoSet:true});
@@ -1836,11 +1954,48 @@ function _rcRunnerDests(hitBases,batterToFirst,pre,sacType){
     }
   } else if(sacType==='fly'){
     if(pre.b3)d.b3='score';
-    // b1 and b2 hold by default — coach overrides if they tag and advance
   } else if(sacType==='bunt'){
     if(pre.b1)d.b1='2b';
     if(pre.b2)d.b2='3b';
     if(pre.b3)d.b3='score';
+  }
+  return d;
+}
+
+function _rcBipPreFill(bipType,bipOut,pre,outs){
+  const d={};
+  if(bipOut==='hit'||bipOut==='error'){
+    // All advance one base
+    if(pre.b3) d.b3='score';
+    if(pre.b2) d.b2='3b';
+    if(pre.b1) d.b1='2b';
+  } else if(bipOut==='out'){
+    if(bipType==='GB'){
+      if(pre.b1&&!pre.b2&&!pre.b3&&outs<2) d.b1='out'; // DP: R1 only, <2 outs
+      else if(pre.b1&&pre.b2){ d.b2='out'; d.b1='2b'; } // R1+R2: R2→Out, R1→2B
+      // R3 only, or no runners: all stayed
+    } else if(bipType==='FLY'){
+      if(pre.b3&&outs<2) d.b3='score'; // tag-up pre-fill; SAC fly derives at log time
+    } else if(bipType==='BUNT'){
+      if(outs<2){
+        if(pre.b3) d.b3='score';
+        if(pre.b2) d.b2='3b';
+        if(pre.b1) d.b1='2b';
+      }
+    }
+    // LD, PU Out: all stayed (no pre-fill)
+  } else if(bipOut==='fc'){
+    if(bipType==='GB'||bipType==='BUNT'){
+      if(pre.b1&&!pre.b2&&!pre.b3){ d.b1='out'; }
+      else if(pre.b1&&pre.b2&&!pre.b3){ d.b2='out'; d.b1='2b'; }
+      else if(pre.b1&&pre.b2&&pre.b3){ d.b3='out'; d.b2='3b'; d.b1='2b'; }
+      else if(!pre.b1&&pre.b2&&!pre.b3){ d.b2='out'; }
+      else if(!pre.b1&&!pre.b2&&pre.b3){ d.b3='out'; }
+    } else { // LD, FLY, PU: lead runner → Out
+      if(pre.b3){ d.b3='out'; }
+      else if(pre.b2){ d.b2='out'; }
+      else if(pre.b1){ d.b1='out'; }
+    }
   }
   return d;
 }
@@ -1881,10 +2036,10 @@ function _rcDiamondHTML(proj){
 }
 
 function _rcCardHTML(entry){
-  const {key,runner,startBase,dest,fixed,advErr,earnedOverride}=entry;
+  const {key,runner,startBase,dest,fixed,advErr,earnedOverride,extendedDests}=entry;
   const isBatter=key==='batter';
   const num=runner.num?'#'+runner.num:(runner.name||'—');
-  const baseLabel=isBatter?'Batter':startBase;
+  const baseLabel=isBatter?(entry.label||'Batter'):startBase;
   const stay=!isBatter?(startBase==='3B'?'3b':startBase==='2B'?'2b':'1b'):null;
   const effDest=dest!==null?dest:(stay||null);
   const isScoring=dest==='score'||(fixed&&dest==='score');
@@ -1896,7 +2051,11 @@ function _rcCardHTML(entry){
   const badgeColor=isBatter?'#fff':'#000';
   const dBtns=[];
   if(isBatter){
-    dBtns.push({d:'1b',label:'1B'},{d:'2b',label:'2B'},{d:'3b',label:'3B'});
+    if(extendedDests){
+      dBtns.push({d:'out',label:'Out',color:'var(--red)'},{d:'1b',label:'1B'},{d:'2b',label:'2B'},{d:'3b',label:'3B'},{d:'score',label:'Run Scores',color:'var(--green)'});
+    } else {
+      dBtns.push({d:'1b',label:'1B'},{d:'2b',label:'2B'},{d:'3b',label:'3B'});
+    }
   } else {
     dBtns.push({d:stay,label:startBase});
     if(startBase==='1B'){dBtns.push({d:'2b',label:'2B'},{d:'3b',label:'3B'});}
@@ -1909,7 +2068,7 @@ function _rcCardHTML(entry){
     const active=effDest===d;
     return `<button onclick="setRCDest('${key}','${d}')" style="flex:1;padding:7px 3px;border-radius:var(--rsm);border:1.5px solid ${active?color:'var(--border2)'};background:${active?color:'var(--bg3)'};color:${active?'#fff':'var(--text2)'};font-size:11px;font-weight:700;cursor:pointer;min-width:0;overflow:hidden;">${label}</button>`;
   };
-  const fixLbl=dest==='score'?'Run Scores →':dest==='1b'?'→ 1st base':dest==='2b'?'→ 2nd base':dest==='3b'?'→ 3rd base':'—';
+  const fixLbl=dest==='score'?'Run Scores →':dest==='1b'?'→ 1st base':dest==='2b'?'→ 2nd base':dest==='3b'?'→ 3rd base':dest==='out'?'Out':'—';
   const earnRow=isScoring?`<div style="display:flex;align-items:center;gap:8px;padding-top:8px;margin-top:6px;border-top:1px solid var(--border);"><div style="font-size:11px;color:${showWarn?'var(--orange)':'var(--text2)'};flex:1;">${showWarn?'⚑ Verify earned/unearned':'Run:'}</div><button onclick="setRCEarned('${key}',true)" style="padding:5px 10px;border-radius:var(--rsm);border:1.5px solid ${earned===true?'var(--green)':'var(--border2)'};background:${earned===true?'var(--green)':'var(--bg3)'};color:${earned===true?'#fff':'var(--text2)'};font-size:11px;font-weight:700;cursor:pointer;">Earned</button><button onclick="setRCEarned('${key}',false)" style="padding:5px 10px;border-radius:var(--rsm);border:1.5px solid ${earned===false?'var(--orange)':'var(--border2)'};background:${earned===false?'var(--orange)':'var(--bg3)'};color:${earned===false?'#fff':'var(--text2)'};font-size:11px;font-weight:700;cursor:pointer;">Unearned</button></div>`:'';
   return `<div style="background:var(--bg3);border:1px solid ${border};border-radius:var(--rsm);padding:10px 12px;margin-bottom:8px;"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><div style="background:${badgeBg};color:${badgeColor};font-size:10px;font-weight:800;padding:2px 8px;border-radius:3px;flex-shrink:0;">${baseLabel}</div><div style="font-size:13px;font-weight:700;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${num}</div>${!isBatter?`<button onclick="setRCAdvErr('${key}',${!advErr})" style="padding:3px 8px;border-radius:var(--rsm);border:1.5px solid ${advErr?'var(--orange)':'var(--border2)'};background:${advErr?'rgba(240,135,58,0.12)':'var(--bg4)'};color:${advErr?'var(--orange)':'var(--text3)'};font-size:10px;font-weight:700;cursor:pointer;flex-shrink:0;">E-</button>`:''}</div>${fixed?`<div style="font-size:12px;color:var(--text3);padding-bottom:${isScoring?'0':'2px'};">${fixLbl}</div>`:`<div style="display:flex;gap:4px;">${dBtns.map(({d,label,color})=>btn(d,label,color)).join('')}</div>`}${earnRow}</div>`;
 }
@@ -1926,6 +2085,34 @@ function setRCDest(key,dest){
     RC.entries.forEach(en=>{
       if(en.key!=='batter'&&en.autoSet) en.dest=newDests[en.key]||null;
     });
+  } else if(key==='batter'&&RC.context==='s3'&&(CE.rt==='d3k'||CE.d3kOut)){
+    // D3K live ball: batter can't share a base with any runner they passed through.
+    // Cascade: trailing runners (lower base) are processed first so they claim the nearest
+    // open base, forcing lead runners further — preserves baseball runner ordering.
+    const ord={'1b':1,'2b':2,'3b':3,'score':4};
+    const sOrdMap={'1B':1,'2B':2,'3B':3};
+    const batOrd=ord[dest]||0;
+    const toKey=o=>o>=4?'score':o===3?'3b':o===2?'2b':'1b';
+    // Runners above batter's destination stay put but block the cascade path
+    const blocked=new Set();
+    RC.entries.forEach(en=>{
+      if(en.key==='batter'||!en.autoSet) return;
+      if((sOrdMap[en.startBase]||0)>batOrd){
+        const eff=en.dest!==null?en.dest:(en.startBase==='3B'?'3b':en.startBase==='2B'?'2b':'1b');
+        if(eff!=='score') blocked.add(eff);
+      }
+    });
+    const claimed=new Set();
+    RC.entries
+      .filter(en=>en.key!=='batter'&&en.autoSet&&(sOrdMap[en.startBase]||0)>0&&(sOrdMap[en.startBase]||0)<=batOrd)
+      .sort((a,b)=>(sOrdMap[a.startBase]||0)-(sOrdMap[b.startBase]||0)) // trailing first
+      .forEach(en=>{
+        let pushOrd=batOrd+1;
+        while(pushOrd<4&&(blocked.has(toKey(pushOrd))||claimed.has(toKey(pushOrd)))) pushOrd++;
+        const d=toKey(pushOrd);
+        en.dest=d;
+        if(d!=='score') claimed.add(d);
+      });
   } else if(key!=='batter'){
     e.autoSet=false;
   }
@@ -1956,9 +2143,19 @@ function applyRCMoves(){
   G.runners=newR;
   if(RC.context==='s3'){
     CE.er=erRuns; CE.ur=urRuns;
+    // Derive dp from runner card state: 2+ cards at Out = double play
+    CE.dp=RC.entries.filter(e=>e.dest==='out').length>=2;
     const runnerOuts=RC.entries.filter(e=>e.key!=='batter'&&e.dest==='out').length;
-    if(runnerOuts>0&&CE.bipOut!=='out'&&!CE.dp)CE.ro=true;
-    else if(runnerOuts>1&&CE.dp)CE.ro=true;
+    if(runnerOuts>0&&CE.bipOut!=='out'&&!CE.dp) CE.ro=true;
+    else if(runnerOuts>1&&CE.dp) CE.ro=true;
+    // Batter baserunning out: batter reached (hit/fc/error/d3k) but was put out advancing
+    if(CE.rt==='d3k'){
+      const be=RC.entries.find(e=>e.key==='batter');
+      if(be&&be.dest==='out') CE.ro=true;
+    } else if(CE.rt==='bip'&&(CE.bipOut==='hit'||CE.bipOut==='fc'||CE.bipOut==='error')){
+      const be=RC.entries.find(e=>e.key==='batter');
+      if(be&&be.dest==='out') CE.ro=true;
+    }
   }
 }
 
@@ -1975,7 +2172,7 @@ function makeRunner(batter,reachedVia){
 function calcRunEarnedDefault(runner){
   if(!runner) return true;
   // Runner reached via error or passed ball → unearned (should have been out)
-  if(runner.reachedVia==='error'||runner.reachedVia==='pb') return false;
+  if(runner.reachedVia==='error'||runner.reachedVia==='pb'||runner.reachedVia==='d3k_pb') return false;
   // Shadow inning: did an error extend the inning past a phantom 3rd out?
   const shadowOut=getInningShadowThirdOut(runner.inning||G.inning,runner.half||G.half);
   if(shadowOut!==null&&(runner.abNum||0)>shadowOut) return false;
@@ -1989,7 +2186,7 @@ function getInningShadowThirdOut(inning,half){
   let shadow=0;
   for(const pitch of terms){
     const rt=pitch.rt;
-    const isErrorReach=(rt==='d3k')||(rt==='bip'&&pitch.bipOut==='error');
+    const isErrorReach=(rt==='d3k'&&pitch.d3kCause==='pb')||(rt==='bip'&&pitch.bipOut==='error');
     const isRealOut=(rt==='k'||rt==='kc')||(rt==='bip'&&pitch.bipOut==='out')||(rt==='oob')||
       (rt==='other'&&pitch.result&&pitch.result.includes('Out'));
     if(isErrorReach||isRealOut){
@@ -2290,7 +2487,7 @@ function computeOutingGrade(pitches,level){
   level=level||'hs';
   const n=pitches.length;
   const strikes=pitches.filter(p=>p.isStrike).length;
-  const ks=pitches.filter(p=>p.rt==='k'||p.rt==='kc').length;
+  const ks=pitches.filter(p=>p.rt==='k'||p.rt==='kc'||p.rt==='d3k').length;
   const bbs=pitches.filter(p=>p.rt==='bb'||p.rt==='ibb').length;
   const hbps=pitches.filter(p=>p.rt==='hbp').length;
   const hrs=pitches.filter(p=>p.rt==='hr').length;
@@ -2399,7 +2596,7 @@ function showPitcherPanel(){
   const p=curP(); if(!p)return;
   const pp=G.pitches.filter(q=>q.appId===p.appId);
   const st=pp.filter(q=>q.isStrike).length;
-  const k=pp.filter(q=>q.rt==='k'||q.rt==='kc').length;
+  const k=pp.filter(q=>q.rt==='k'||q.rt==='kc'||q.rt==='d3k').length;
   const bb=pp.filter(q=>q.rt==='bb'||q.rt==='ibb').length;
   const h=pp.filter(q=>q.bipOut==='hit'||q.rt==='hr').length;
   const er=pp.reduce((a,q)=>a+(q.er||0),0);
@@ -2411,7 +2608,7 @@ function showPitcherPanel(){
     if(!groups[key]) groups[key]={inning:q.inning,half:q.half,pitches:0,strikes:0,k:0,bb:0,h:0,er:0};
     const g=groups[key];
     g.pitches++; if(q.isStrike) g.strikes++;
-    if(q.rt==='k'||q.rt==='kc') g.k++;
+    if(q.rt==='k'||q.rt==='kc'||q.rt==='d3k') g.k++;
     if(q.rt==='bb'||q.rt==='ibb'||q.rt==='hbp') g.bb++;
     if(q.bipOut==='hit'||q.rt==='hr') g.h++;
     g.er+=(q.er||0);

@@ -365,16 +365,19 @@ function devSimGame(){
     if(roll<row[3])return'foul';if(roll<row[4])return'bip';return'hr';
   }
   function simBIP(){
-    const t=_r(),bipType=t<.50?'GB':t<.65?'LD':t<.90?'FLY':'PU';
-    const HP={GB:.22,LD:.68,FLY:.15,PU:.02};
-    const isHit=_r()<HP[bipType],isErr=!isHit&&_r()<.05;
-    const bipOut=isHit?'hit':isErr?'error':'out';
+    const t=_r();
+    const bipType=t<.48?'GB':t<.62?'LD':t<.86?'FLY':t<.95?'PU':'BUNT';
+    const HP={GB:.22,LD:.68,FLY:.15,PU:.02,BUNT:.15};
+    const isHit=_r()<HP[bipType];
+    const isErr=!isHit&&_r()<.05;
+    const canFC=(bipType==='GB'||bipType==='LD'||bipType==='BUNT')&&!isHit&&!isErr&&_r()<.10;
+    const bipOut=isHit?'hit':isErr?'error':canFC?'fc':'out';
     let hb=1;
     if(isHit){const h2=_r();
       if(bipType==='LD')hb=h2<.58?1:h2<.88?2:3;
       else if(bipType==='FLY')hb=h2<.52?1:h2<.82?2:3;
     }
-    const hh=_r()<{GB:.14,LD:.50,FLY:.28,PU:.03}[bipType];
+    const hh=_r()<{GB:.14,LD:.50,FLY:.28,PU:.03,BUNT:.02}[bipType];
     return{bipType,bipOut,hitBases:isHit?hb:0,hh};
   }
   const VB={FB:92,'2S':90,SI:91,FC:89,SL:84,SV:82,CB:78,CH:84,FS:86,FO:83,KN:72,EP:65,OT:80};
@@ -438,24 +441,45 @@ function devSimGame(){
         const pt=_pick(getArs(gp)),velo=simVelo(pt);
         const bb2=balls,sb2=strikes,cat=pickCat(balls,strikes);
         let rt,isSt=false,isTerm=false,result='',bp=null,hh=false,hitBases=0;
+        let pitchSwing=false,pitchD3kCause=null;
 
         if(cat==='ball'){
+          rt='ball';result='Ball';balls++;
+          pitchSwing=false;
           if(balls===3){rt='bb';isTerm=true;result='Walk (BB)';}
-          else{rt='ball';result='Ball';balls++;}
         } else if(cat==='cs'){
-          isSt=true;
-          if(strikes===2){rt='kc';isTerm=true;result='Called Strike 3';}
-          else{rt='strike';result='Called Strike';strikes++;}
+          isSt=true;pitchSwing=false;
+          if(strikes===2){
+            const canRun=!(outs<2&&runners.b1);
+            if(canRun&&_r()<0.04){
+              // Dropped 3rd strike — called
+              isTerm=true;
+              const d3kRoll=_r();
+              if(d3kRoll<0.55){rt='kc';result='ꓘ (Called)';}
+              else if(d3kRoll<0.80){rt='d3k';pitchD3kCause='wp';result='ꓘ (drop, WP)';}
+              else{rt='d3k';pitchD3kCause='pb';result='ꓘ (drop, PB)';}
+            } else {rt='kc';isTerm=true;result='Called Strike 3';}
+          } else{rt='strike';result='Called Strike';strikes++;}
         } else if(cat==='sw'){
-          isSt=true;
-          if(strikes===2){rt='k';isTerm=true;result='Strikeout Swinging';}
-          else{rt='swstr';result='Swinging Strike';strikes++;}
+          isSt=true;pitchSwing=true;
+          if(strikes===2){
+            const canRun=!(outs<2&&runners.b1);
+            if(canRun&&_r()<0.04){
+              // Dropped 3rd strike — swinging
+              isTerm=true;
+              const d3kRoll=_r();
+              if(d3kRoll<0.55){rt='k';result='K';}
+              else if(d3kRoll<0.80){rt='d3k';pitchD3kCause='wp';result='K (drop, WP)';}
+              else{rt='d3k';pitchD3kCause='pb';result='K (drop, PB)';}
+            } else {rt='k';isTerm=true;result='Strikeout Swinging';}
+          } else{rt='swstr';result='Swinging Strike';strikes++;}
         } else if(cat==='foul'){
-          rt='foul';result='Foul Ball';if(strikes<2){isSt=true;strikes++;}
+          rt='foul';result='Foul Ball';pitchSwing=true;
+          if(strikes<2){isSt=true;strikes++;}
         } else if(cat==='hr'){
-          rt='hr';isTerm=true;isSt=true;hh=true;result='Home Run';
+          rt='hr';isTerm=true;isSt=true;hh=true;result='Home Run';pitchSwing=true;
         } else {
-          rt='bip';isTerm=true;isSt=true;bp=simBIP();
+          rt='bip';isTerm=true;isSt=true;pitchSwing=true;bp=simBIP();
           const hl={1:'Single',2:'Double',3:'Triple'};
           result=bp.bipOut==='hit'?`In Play · ${hl[bp.hitBases]||'Single'}`:bp.bipOut==='error'?'In Play · Reached on Error':'In Play · Out';
           hh=bp.hh;hitBases=bp.hitBases;
@@ -470,7 +494,8 @@ function devSimGame(){
           bHand:batter.hand,bName:batter.name,ha:'home',
           pt,velo,result,rt,isStrike:isSt,isTerm,
           bipType:bp?.bipType||null,bipOut:bp?.bipOut||null,
-          hh,wc:false,dp:false,fc:false,ro:false,hitBases,
+          hh,wc:false,dp:false,fc:bp?.bipOut==='fc',ro:false,hitBases,
+          swing:pitchSwing,d3kCause:pitchD3kCause,
           sx:null,sy:null,zx:null,zy:null,note:'',er:0,ur:0,
           ts:Date.now()+pitches.length*50,
         });
@@ -478,19 +503,57 @@ function devSimGame(){
 
         if(isTerm){
           if(rt==='k'||rt==='kc'){gp.k++;outs++;gp.po++;}
+          else if(rt==='d3k'){
+            // Pitcher gets K credit; batter reaches — advance like walk (simplified)
+            gp.k++;
+            const r0={...runners};
+            const nb={b1:'B',b2:r0.b2,b3:r0.b3};
+            if(r0.b1){nb.b2=r0.b1;if(r0.b2){nb.b3=r0.b2;if(r0.b3){
+              // R3 scores — WP→earned, PB→unearned
+              oppScore++;
+              if(pitchD3kCause==='pb'){gp.ur++;pitches[pitches.length-1].ur=1;}
+              else{gp.er++;pitches[pitches.length-1].er=1;}
+            }}}
+            runners=nb;
+          }
           else if(rt==='bb'){gp.bb++;advance(0,false,true,null);}
           else if(rt==='hr'){
             const sc=advance(0,true,false,null);
             oppScore+=sc;gp.hr=(gp.hr||0)+1;gp.h=(gp.h||0)+1;gp.er+=sc;
             pitches[pitches.length-1].er=sc;
           } else if(rt==='bip'){
-            if(bp.bipOut==='out'){outs++;gp.po++;}
-            else if(bp.bipOut==='hit'){
+            const last=pitches[pitches.length-1];
+            if(bp.bipOut==='hit'){
               gp.h++;const sc=advance(bp.hitBases,false,false,'hit');
-              oppScore+=sc;gp.er+=sc;pitches[pitches.length-1].er=sc;
+              oppScore+=sc;gp.er+=sc;last.er=sc;
             } else if(bp.bipOut==='error'){
               const sc=advance(0,false,false,'error');
-              oppScore+=sc;gp.ur+=sc;pitches[pitches.length-1].ur=sc;
+              oppScore+=sc;gp.ur+=sc;last.ur=sc;
+            } else if(bp.bipOut==='fc'){
+              // Batter reaches 1B; lead runner is put out
+              outs++;gp.po++;
+              const r0={...runners};
+              runners={b1:'B',b2:r0.b2||null,b3:r0.b3||null};
+            } else { // out
+              // SAC derivation: Bunt or Fly Out, <2 outs, runner on base
+              const hasR=runners.b1||runners.b2||runners.b3;
+              if((bp.bipType==='BUNT'||bp.bipType==='FLY')&&outs<2&&hasR){
+                last.bipOut='sac';
+                const r0={...runners};let sc=0;
+                if(bp.bipType==='FLY'){
+                  if(r0.b3){sc++;runners={b1:r0.b1||null,b2:r0.b2||null,b3:null};}
+                } else {
+                  const nb={b1:null,b2:r0.b1||null,b3:r0.b2||null};
+                  if(r0.b3)sc++;runners=nb;
+                }
+                outs++;gp.po++;
+                if(sc>0){oppScore+=sc;gp.er+=sc;last.er=sc;}
+              } else {
+                // Check DP: GB, R1 on, <2 outs, ~35% chance
+                const isDP=bp.bipType==='GB'&&runners.b1&&outs<2&&_r()<.35;
+                outs++;gp.po++;
+                if(isDP){outs++;gp.po++;last.dp=true;}
+              }
             }
           }
           abDone=true;abNum++;abPitchNum=1;battIdx++;

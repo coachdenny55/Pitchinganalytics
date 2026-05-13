@@ -390,6 +390,9 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 .summary-row.total { background: rgba(255,255,255,0.08); font-weight: 700; }
 .summary-row.current { background: rgba(74,158,255,0.1); }
 
+/* D3K Stage 2 sheet */
+.d3k-sheet { position: relative; background: var(--bg); border-radius: var(--r); width: 92vw; max-width: 400px; padding: 20px 18px 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+
 /* Field event sheet */
 .fe-sheet { position: relative; background: var(--bg); border-radius: var(--r); width: 95vw; max-width: 500px; max-height: 80vh; padding: 14px 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); overflow-y: auto; }
 .fe-title { font-size: 15px; font-weight: 700; margin-bottom: 12px; }
@@ -779,69 +782,33 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
       <div style="display:flex;gap:6px;margin-bottom:6px;">
         <div style="writing-mode:vertical-rl;transform:rotate(180deg);font-size:9px;color:var(--text3);letter-spacing:0.5px;padding:4px 2px;flex-shrink:0;align-self:center;">PITCH</div>
         <div class="result-grid" style="flex:1;">
-          <button class="r-btn" id="r-strike" onclick="pickR('Take Strike','strike',true,false)">Take Strike</button>
-          <button class="r-btn" id="r-swstr" onclick="pickR('Swing &amp; Miss','swstr',true,false)">Swing &amp; Miss</button>
-          <button class="r-btn" onclick="pickR('Foul Ball','foul',false,false)">Foul Ball</button>
-          <button class="r-btn" onclick="pickR('Ball','ball',false,false)">Ball</button>
-          <button class="r-btn" onclick="pickR('HBP','hbp',false,true)">HBP</button>
-          <button class="r-btn" onclick="pickR('IBB (no pitch)','ibb',false,true)">IBB</button>
-          <button class="r-btn" id="r-bb" onclick="pickR('BB','bb',false,true)">BB</button>
-          <button class="r-btn" id="r-k" onclick="pickR('K (Swing)','k',true,true)">K</button>
-          <button class="r-btn" id="r-kc" onclick="pickR('ꓘ (Called)','kc',true,true)">ꓘ</button>
-          <button class="r-btn" id="d3k-sw" onclick="pickR('Dropped 3K Swing-E2','d3k',true,true)">Drop 3K Swing</button>
-          <button class="r-btn" id="d3k-ca" onclick="pickR('Dropped 3K Called-E2','d3k',true,true)">Drop 3K Called</button>
-          <button class="r-btn" onclick="pickR('Catchers Int.','ci',false,true)">Catcher Int</button>
+          <button class="r-btn" id="r-strike" onclick="pickR('Take Strike','strike',true,false,null,null,false)">Take Strike</button>
+          <button class="r-btn" id="r-swstr" onclick="pickR('Swing &amp; Miss','swstr',true,false,null,null,true)">Swing &amp; Miss</button>
+          <button class="r-btn" onclick="pickR('Foul Ball','foul',false,false,null,null,true)">Foul Ball</button>
+          <button class="r-btn" onclick="pickR('Ball','ball',false,false,null,null,false)">Ball</button>
+          <button class="r-btn" onclick="pickR('HBP','hbp',false,true,null,null,false)">HBP</button>
+          <button class="r-btn" onclick="pickR('IBB (no pitch)','ibb',false,true,null,null,false)">IBB</button>
+          <button class="r-btn" id="r-bb" onclick="pickR('BB','bb',false,true,null,null,false)">BB</button>
+          <button class="r-btn" id="r-k" onclick="pickR('K (Swing)','k',true,true,null,null,true)">K</button>
+          <button class="r-btn" id="r-kc" onclick="pickR('ꓘ (Called)','kc',true,true,null,null,false)">ꓘ</button>
+          <button class="r-btn" id="d3k-sw" onclick="pickD3K(true)">Drop 3K Swing</button>
+          <button class="r-btn" id="d3k-ca" onclick="pickD3K(false)">Drop 3K Called</button>
+          <button class="r-btn" onclick="pickR('Catchers Int.','ci',false,true,null,null,false)">Catcher Int</button>
         </div>
       </div>
 
       <div style="height:1px;background:var(--border);margin:4px 0;"></div>
 
-      <!-- Ground balls -->
+      <!-- Contact type (Section B) -->
       <div style="display:flex;gap:6px;margin-bottom:6px;margin-top:6px;">
-        <div style="writing-mode:vertical-rl;transform:rotate(180deg);font-size:9px;color:var(--text3);letter-spacing:0.5px;padding:4px 2px;flex-shrink:0;align-self:center;">GROUND</div>
+        <div style="writing-mode:vertical-rl;transform:rotate(180deg);font-size:9px;color:var(--text3);letter-spacing:0.5px;padding:4px 2px;flex-shrink:0;align-self:center;">CONTACT</div>
         <div class="result-grid" style="flex:1;grid-template-columns:repeat(3,1fr);">
-          <button class="r-btn" onclick="pickR('Ground Hit','bip',true,true,'GB','hit')">GB Hit</button>
-          <button class="r-btn" onclick="pickR('Ground Out','bip',true,true,'GB','out')">GB Out</button>
-          <button class="r-btn" onclick="pickR('Ground Error','bip',true,true,'GB','error')">GB Error</button>
-          <button class="r-btn" id="r-sac-bunt" onclick="pickR('SAC Bunt','bip',true,true,'GB','sac')" style="grid-column:span 3;">SAC Bunt</button>
-        </div>
-      </div>
-
-      <div style="height:1px;background:var(--border);margin:4px 0;"></div>
-
-      <!-- Line drives -->
-      <div style="display:flex;gap:6px;margin-bottom:6px;margin-top:6px;">
-        <div style="writing-mode:vertical-rl;transform:rotate(180deg);font-size:9px;color:var(--text3);letter-spacing:0.5px;padding:4px 2px;flex-shrink:0;align-self:center;">LINE</div>
-        <div class="result-grid" style="flex:1;grid-template-columns:repeat(3,1fr);">
-          <button class="r-btn" onclick="pickR('Line Hit','bip',true,true,'LD','hit')">LD Hit</button>
-          <button class="r-btn" onclick="pickR('Line Out','bip',true,true,'LD','out')">LD Out</button>
-          <button class="r-btn" onclick="pickR('Line Error','bip',true,true,'LD','error')">LD Error</button>
-        </div>
-      </div>
-
-      <div style="height:1px;background:var(--border);margin:4px 0;"></div>
-
-      <!-- Fly balls -->
-      <div style="display:flex;gap:6px;margin-bottom:6px;margin-top:6px;">
-        <div style="writing-mode:vertical-rl;transform:rotate(180deg);font-size:9px;color:var(--text3);letter-spacing:0.5px;padding:4px 2px;flex-shrink:0;align-self:center;">FLY</div>
-        <div class="result-grid" style="flex:1;grid-template-columns:repeat(3,1fr);">
-          <button class="r-btn" onclick="pickR('Fly Hit','bip',true,true,'FLY','hit')">Fly Hit</button>
-          <button class="r-btn" onclick="pickR('Fly Out','bip',true,true,'FLY','out')">Fly Out</button>
-          <button class="r-btn" onclick="pickR('Fly Error','bip',true,true,'FLY','error')">Fly Error</button>
-          <button class="r-btn" id="r-sac-fly" onclick="pickR('SAC Fly','bip',true,true,'FLY','sac')">SAC Fly</button>
-          <button class="r-btn" onclick="pickR('Home Run','hr',true,true,'FLY','hr')" style="grid-column:span 2;">Home Run</button>
-        </div>
-      </div>
-
-      <div style="height:1px;background:var(--border);margin:4px 0;"></div>
-
-      <!-- Pop ups -->
-      <div style="display:flex;gap:6px;margin-bottom:6px;margin-top:6px;">
-        <div style="writing-mode:vertical-rl;transform:rotate(180deg);font-size:9px;color:var(--text3);letter-spacing:0.5px;padding:4px 2px;flex-shrink:0;align-self:center;">POP</div>
-        <div class="result-grid" style="flex:1;grid-template-columns:repeat(3,1fr);">
-          <button class="r-btn" onclick="pickR('Pop Up Out','bip',true,true,'PU','out')">PU Out</button>
-          <button class="r-btn" onclick="pickR('Pop Up Error','bip',true,true,'PU','error')">PU Error</button>
-          <button class="r-btn" onclick="pickR('Pop Up Hit','bip',true,true,'PU','hit')">PU Hit</button>
+          <button class="r-btn" id="r-gb"   onclick="pickContact('GB')">GB</button>
+          <button class="r-btn" id="r-ld"   onclick="pickContact('LD')">LD</button>
+          <button class="r-btn" id="r-fly"  onclick="pickContact('FLY')">Fly Ball</button>
+          <button class="r-btn" id="r-pu"   onclick="pickContact('PU')">Pop Up</button>
+          <button class="r-btn" id="r-bunt" onclick="pickContact('BUNT')">Bunt</button>
+          <button class="r-btn" onclick="pickHR()">Home Run</button>
         </div>
       </div>
 
@@ -851,8 +818,8 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
       <div style="display:flex;gap:6px;margin-top:6px;">
         <div style="writing-mode:vertical-rl;transform:rotate(180deg);font-size:9px;color:var(--text3);letter-spacing:0.5px;padding:4px 2px;flex-shrink:0;align-self:center;">MISC</div>
         <div class="result-grid" style="flex:1;grid-template-columns:repeat(3,1fr);">
-          <button class="r-btn" onclick="pickR('Other - Safe','other',false,true)">Other Safe</button>
-          <button class="r-btn" onclick="pickR('Other - Out','other',false,true)">Other Out</button>
+          <button class="r-btn" onclick="pickR('Other - Safe','other',false,true,null,'other',false)">Other Safe</button>
+          <button class="r-btn" onclick="pickR('Other - Out','other',false,true,null,'other',false)">Other Out</button>
         </div>
       </div>
     </div>
@@ -877,14 +844,6 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
           <button class="mod-btn" id="mod-hh" onclick="toggleContact('hh')" style="flex:1;">Hard Hit</button>
         </div>
 
-        <div style="height:1px;background:var(--border);margin:4px 0 10px;"></div>
-
-        <!-- Play tags -->
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
-          <button class="mod-btn" id="mod-dp" onclick="toggleMod('dp')" style="flex:1;min-width:80px;">Double Play</button>
-          <button class="mod-btn" id="mod-fc" onclick="toggleMod('fc')" style="flex:1;min-width:80px;">Fielder's Choice</button>
-        </div>
-
         <!-- Smart earned/unearned warning -->
         <div id="earned-suggest" style="display:none;padding:8px 12px;background:rgba(240,135,58,0.1);border:1px solid rgba(240,135,58,0.3);border-radius:var(--rsm);margin-bottom:10px;font-size:12px;color:var(--orange);"></div>
       </div>
@@ -903,6 +862,49 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
       <button id="fe-shortcut-btn" onclick="logAndFE()" style="display:none;flex:none;padding:14px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--rsm);color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">Field Event</button>
       <button class="confirm-btn" id="confirm-btn" onclick="confirmStep()" disabled>Next →</button>
     </div>
+  </div>
+</div>
+
+<!-- ══ CONTACT DISPOSITION OVERLAY ══ -->
+<div class="overlay" id="disp-ov">
+  <div class="overlay-bg" onclick="cancelDisposition()"></div>
+  <div class="d3k-sheet">
+    <div id="disp-header" style="font-size:15px;font-weight:700;text-align:center;margin-bottom:18px;color:var(--text);">Ground Ball → ?</div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <button onclick="pickDisposition('hit')" style="padding:16px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--rsm);color:var(--text);font-size:15px;font-weight:700;cursor:pointer;text-align:left;">
+        Hit <span style="font-size:12px;font-weight:400;color:var(--text3);display:block;margin-top:3px;">Batter reached safely on a hit</span>
+      </button>
+      <button onclick="pickDisposition('out')" style="padding:16px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--rsm);color:var(--text);font-size:15px;font-weight:700;cursor:pointer;text-align:left;">
+        Out <span style="font-size:12px;font-weight:400;color:var(--text3);display:block;margin-top:3px;">Batter retired</span>
+      </button>
+      <button onclick="pickDisposition('fc')" style="padding:16px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--rsm);color:var(--text);font-size:15px;font-weight:700;cursor:pointer;text-align:left;">
+        FC — Fielder's Choice <span style="font-size:12px;font-weight:400;color:var(--text3);display:block;margin-top:3px;">Batter reached; fielder chose to retire another runner</span>
+      </button>
+      <button onclick="pickDisposition('error')" style="padding:16px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--rsm);color:var(--text);font-size:15px;font-weight:700;cursor:pointer;text-align:left;">
+        Error <span style="font-size:12px;font-weight:400;color:var(--text3);display:block;margin-top:3px;">Batter reached on a fielding error</span>
+      </button>
+    </div>
+    <button onclick="cancelDisposition()" style="margin-top:14px;width:100%;padding:10px;background:none;border:1px solid var(--border2);border-radius:var(--rsm);color:var(--text3);font-size:13px;cursor:pointer;">Cancel</button>
+  </div>
+</div>
+
+<!-- ══ D3K STAGE 2 OVERLAY ══ -->
+<div class="overlay" id="d3k-ov">
+  <div class="overlay-bg" onclick="cancelD3K()"></div>
+  <div class="d3k-sheet">
+    <div id="d3k-header" style="font-size:15px;font-weight:700;text-align:center;margin-bottom:18px;color:var(--text);">Drop 3K</div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <button onclick="pickD3KResult('out')" style="padding:16px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--rsm);color:var(--text);font-size:15px;font-weight:700;cursor:pointer;text-align:left;">
+        Out <span style="font-size:12px;font-weight:400;color:var(--text3);display:block;margin-top:3px;">Catcher recovered — batter retired</span>
+      </button>
+      <button onclick="pickD3KResult('wp')" style="padding:16px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--rsm);color:var(--text);font-size:15px;font-weight:700;cursor:pointer;text-align:left;">
+        Reached — WP <span style="font-size:12px;font-weight:400;color:var(--text3);display:block;margin-top:3px;">Pitch difficult to catch with ordinary effort (earned)</span>
+      </button>
+      <button onclick="pickD3KResult('pb')" style="padding:16px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--rsm);color:var(--text);font-size:15px;font-weight:700;cursor:pointer;text-align:left;">
+        Reached — PB <span style="font-size:12px;font-weight:400;color:var(--text3);display:block;margin-top:3px;">Catcher should have handled pitch with ordinary effort (unearned)</span>
+      </button>
+    </div>
+    <button onclick="cancelD3K()" style="margin-top:14px;width:100%;padding:10px;background:none;border:1px solid var(--border2);border-radius:var(--rsm);color:var(--text3);font-size:13px;cursor:pointer;">Cancel</button>
   </div>
 </div>
 
