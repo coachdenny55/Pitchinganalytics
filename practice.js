@@ -325,9 +325,12 @@ function _renderPracSession(){
   _updatePracHint();
 
   // Type buttons — pre-select suggested type for scripted mode
-  const arsenal=pitcher.arsenal||['FB','SL','CH'];
+  const arsenal=(pitcher.arsenal&&pitcher.arsenal.length)?pitcher.arsenal:['FB','SL','CH'];
   const typeEl=document.getElementById('prac-type-row');
-  if(typeEl) typeEl.innerHTML=arsenal.map(t=>`<button class="prac-t-btn${_PR._pitchType===t?' on':''}" onclick="pracSelType('${t}')">${t}</button>`).join('');
+  if(typeEl) typeEl.innerHTML=arsenal.map(t=>{
+    const esc=t.replace(/&/g,'&amp;').replace(/'/g,'&#39;');
+    return`<button class="prac-t-btn${_PR._pitchType===t?' on':''}" data-pt="${esc}" onclick="pracSelType('${esc}')">${esc}</button>`;
+  }).join('');
 
   // Result row (hidden for command)
   const resultEl=document.getElementById('prac-result-row');
@@ -336,16 +339,20 @@ function _renderPracSession(){
       resultEl.style.display='none';
     }else{
       resultEl.style.display='grid';
-      resultEl.innerHTML=PRAC_RESULTS.map(r=>`<button class="prac-r-btn${_PR._result===r?' on':''}" onclick="pracSelResult('${r}')">${r}</button>`).join('');
+      resultEl.innerHTML=PRAC_RESULTS.map(r=>{
+        const esc=r.replace(/&/g,'&amp;').replace(/'/g,'&#39;');
+        return`<button class="prac-r-btn${_PR._result===r?' on':''}" data-res="${esc}" onclick="pracSelResult('${esc}')">${esc}</button>`;
+      }).join('');
     }
   }
 
   _updatePracConfirm();
 
-  // Bind zone canvas (once per session)
+  // Bind zone canvas (once per session); touchstart handles mobile since touch-action:none suppresses click
   const cv=document.getElementById('prac-zone-cv');
   if(cv&&!_pracZoneBound){
     cv.addEventListener('click',_pracZoneTap);
+    cv.addEventListener('touchstart',_pracZoneTouchStart,{passive:false});
     _pracZoneBound=true;
   }
   requestAnimationFrame(()=>_drawPracZone());
@@ -455,6 +462,21 @@ function _drawPracZone(){
     }
   });
 
+  // Chase highlight: swing on out-of-zone pitch (shadow zones 11–14)
+  const swingResults=new Set(['Sw&M','Foul','GB','LD','Fly','PU']);
+  recent.forEach((p,i)=>{
+    if(p.zx==null||!swingResults.has(p.result)) return;
+    const zn=getZoneNum(p.zx,p.zy);
+    if(zn<11||zn>14) return;
+    const alpha=0.30+(i/recent.length)*0.55;
+    const x=p.zx*W,y=p.zy*H;
+    ctx.beginPath();ctx.arc(x,y,11,0,Math.PI*2);
+    ctx.strokeStyle=`rgba(240,135,58,${alpha})`;ctx.lineWidth=2;ctx.stroke();
+    ctx.fillStyle=`rgba(240,135,58,${alpha})`;
+    ctx.font='bold 7px -apple-system';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText('C',x,y-15);
+  });
+
   // Pending intended (yellow dashed ring)
   if(_PR._izx!==null){
     const ix=_PR._izx*W,iy=_PR._izy*H;
@@ -493,7 +515,6 @@ function _pracZoneTap(e){
     }else if(_PR._zx===null){
       _PR._zx=zx;_PR._zy=zy;
     }else{
-      // reset and retap intended
       _PR._izx=zx;_PR._izy=zy;_PR._zx=null;_PR._zy=null;
     }
   }else{
@@ -501,6 +522,12 @@ function _pracZoneTap(e){
   }
   _updatePracHint();_updatePracConfirm();
   requestAnimationFrame(()=>_drawPracZone());
+}
+// touch-action:none on the canvas suppresses click synthesis on iOS — handle touch directly
+function _pracZoneTouchStart(e){
+  e.preventDefault(); // prevent scroll and stop click from also firing
+  const t=e.touches[0]||e.changedTouches[0];
+  if(t) _pracZoneTap({clientX:t.clientX,clientY:t.clientY});
 }
 
 function _updatePracHint(){
@@ -534,13 +561,15 @@ function _updatePracConfirm(){
 }
 
 function pracSelType(t){
+  if(!_PR)return;
   _PR._pitchType=t;
-  document.querySelectorAll('.prac-t-btn').forEach(b=>b.classList.toggle('on',b.textContent.trim()===t));
+  document.querySelectorAll('.prac-t-btn').forEach(b=>b.classList.toggle('on',b.dataset.pt===t));
   _updatePracConfirm();
 }
 function pracSelResult(r){
+  if(!_PR)return;
   _PR._result=r;
-  document.querySelectorAll('.prac-r-btn').forEach(b=>b.classList.toggle('on',b.textContent.trim()===r));
+  document.querySelectorAll('.prac-r-btn').forEach(b=>b.classList.toggle('on',b.dataset.res===r));
   _updatePracConfirm();
 }
 

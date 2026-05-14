@@ -1,7 +1,7 @@
 // ══════════════════════════════════════════
 // ANALYTICS MATRIX
 // ══════════════════════════════════════════
-let _anGameId=null,_anFrom='home',_anMetric='usage',_anDeep=false,_anMatrixView='pt_count';
+let _anGameId=null,_anFrom='home',_anMetric='usage',_anDeep=false,_anMatrixView='pt_count',_anZonePT='_all';
 let _anFilter={games:[],pitcher:[],hand:'both',sit:'all',trip:'all',loc:'all',zone:'all',bipZone:'all'};
 
 const AN_COUNTS=[
@@ -18,6 +18,10 @@ const AN_METRICS=[
   {id:'baa',    label:'BAA',      desc:'Hits ÷ at-bats (terminal pitches)'},
   {id:'whiff',  label:'Whiff%',   desc:'Swinging strikes ÷ total swings'},
   {id:'swstr',  label:'SwStr%',   desc:'Swinging strikes ÷ total pitches'},
+  {id:'swing',  label:'Swing%',   desc:'Swings ÷ total pitches'},
+  {id:'zswing', label:'Z-Swing%', desc:'Swings on in-zone pitches ÷ in-zone pitches'},
+  {id:'chase',  label:'Chase%',   desc:'Swings on out-of-zone pitches ÷ out-of-zone pitches'},
+  {id:'zcon',   label:'Z-Con%',   desc:'Zone contact (zone swings minus zone misses) ÷ zone swings'},
   {id:'foul',   label:'Foul%',    desc:'Foul balls ÷ total pitches'},
   {id:'barrel', label:'Barrel%',  desc:'Hard-hit LD or FLY ÷ total BIP'},
   {id:'xbh',    label:'XBH%',     desc:'Extra-base hits ÷ total hits'},
@@ -37,6 +41,8 @@ const AN_MATRIX_VIEWS=[
   {id:'pt_hand',        label:'Type×Hand'},
   {id:'pt_sit',         label:'Type×Sit'},
   {id:'pt_contact',     label:'Type×Contact'},
+  {id:'zone_heat',      label:'Zone Heat Map'},
+  {id:'swing_map',      label:'Swing Map'},
   {id:'runs_breakdown', label:'Runs Allowed'},
 ];
 
@@ -152,7 +158,7 @@ function getZoneCells(zf){
 
 function showAnalytics(gameId,from='home'){
   _anGameId=gameId; _anFrom=from;
-  _anMetric='usage'; _anDeep=false; _anMatrixView='pt_count';
+  _anMetric='usage'; _anDeep=false; _anMatrixView='pt_count'; _anZonePT='_all';
   _anFilter={games:gameId?[gameId]:[],pitcher:[],hand:'both',sit:'all',trip:'all',loc:'all',zone:'all',bipZone:'all'};
   go('analytics');
 }
@@ -300,7 +306,8 @@ function _computeAnMatrix(pitches){
     if(!cells[key]) cells[key]={pt:p.pt,b:p.ballsBefore,s:p.strikesBefore,
       n:0,strikes:0,swings:0,swstr:0,fouls:0,
       bip:0,hits:0,xbh:0,hhbarrel:0,hhxbh:0,
-      terminal:0,kTerm:0,bbhbpTerm:0,abTerm:0,hitsTerm:0,er:0,ur:0};
+      terminal:0,kTerm:0,bbhbpTerm:0,abTerm:0,hitsTerm:0,er:0,ur:0,
+      inZone:0,outZone:0,inZSwings:0,outZSwings:0,inZWhiffs:0};
     const c=cells[key];
     c.n++; c.er+=(p.er||0); c.ur+=(p.ur||0);
     if(p.isStrike) c.strikes++;
@@ -313,6 +320,10 @@ function _computeAnMatrix(pitches){
     if(isSwing) c.swings++;
     if(isMiss) c.swstr++;
     if(isFoul) c.fouls++;
+
+    const _zn=(p.zx!=null&&p.zy!=null)?getZoneNum(p.zx,p.zy):null;
+    if(_zn>=1&&_zn<=9){ c.inZone++; if(isSwing) c.inZSwings++; if(isMiss) c.inZWhiffs++; }
+    if(_zn>=11&&_zn<=14){ c.outZone++; if(isSwing) c.outZSwings++; }
 
     if(isBIP||isHR){
       c.bip++;
@@ -360,7 +371,9 @@ function _computeAnMatrix(pitches){
   return cells;
 }
 
-function setAnMatrixView(id){ _anMatrixView=id; _anMetric='usage'; renderAnalytics(); }
+function setAnMatrixView(id){ _anMatrixView=id; _anMetric='usage'; _anZonePT='_all'; renderAnalytics(); }
+function setAnZonePT(pt){ _anZonePT=pt; renderAnalytics(); }
+function _goSwingMap(pt){ _anMatrixView='swing_map'; _anMetric='usage'; _anZonePT=pt; hideModal(); renderAnalytics(); }
 
 function showAnMatrixPicker(){
   const body=AN_MATRIX_VIEWS.map(v=>`<div onclick="setAnMatrixView('${v.id}');hideModal()" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;-webkit-tap-highlight-color:transparent;">
@@ -469,16 +482,21 @@ function _computeGenMatrix(pitches,rowFn,colFn,rowFilterFn,colMatchFns){
   const cells={},rowTotals={};
   const accum=(row,col,p)=>{
     const key=`${row}_${col}`;
-    if(!cells[key]) cells[key]={row,col,n:0,strikes:0,swings:0,swstr:0,fouls:0,bip:0,hits:0,xbh:0,hhbarrel:0,hhxbh:0,terminal:0,kTerm:0,bbhbpTerm:0,abTerm:0,hitsTerm:0,er:0,ur:0};
+    if(!cells[key]) cells[key]={row,col,n:0,strikes:0,swings:0,swstr:0,fouls:0,bip:0,hits:0,xbh:0,hhbarrel:0,hhxbh:0,terminal:0,kTerm:0,bbhbpTerm:0,abTerm:0,hitsTerm:0,er:0,ur:0,inZone:0,outZone:0,inZSwings:0,outZSwings:0,inZWhiffs:0};
     const c=cells[key]; c.n++; c.er+=(p.er||0); c.ur+=(p.ur||0);
     if(p.isStrike) c.strikes++;
     const isBIP=p.rt==='bip',isHR=p.rt==='hr';
     const isSwingK=p.rt==='k'||p.rt==='d3k';
     const isSwstr=p.rt==='swstr',isFoul=p.rt==='foul';
     const isSwing=isSwstr||isFoul||isBIP||isHR||isSwingK;
+    const isMiss=isSwstr||isSwingK;
     if(isSwing) c.swings++;
-    if(isSwstr||isSwingK) c.swstr++;
+    if(isMiss) c.swstr++;
     if(isFoul) c.fouls++;
+
+    const _zn=(p.zx!=null&&p.zy!=null)?getZoneNum(p.zx,p.zy):null;
+    if(_zn>=1&&_zn<=9){ c.inZone++; if(isSwing) c.inZSwings++; if(isMiss) c.inZWhiffs++; }
+    if(_zn>=11&&_zn<=14){ c.outZone++; if(isSwing) c.outZSwings++; }
     if(isBIP||isHR){
       c.bip++;
       const isHit=p.bipOut==='hit'||isHR;
@@ -744,6 +762,10 @@ function _anVal(c,mid){
     case 'baa':    return c.abTerm?c.hitsTerm/c.abTerm:null;
     case 'whiff':  return c.swings?c.swstr/c.swings:null;
     case 'swstr':  return c.n?c.swstr/c.n:0;
+    case 'swing':  return c.n?c.swings/c.n:0;
+    case 'zswing': return c.inZone?c.inZSwings/c.inZone:null;
+    case 'chase':  return c.outZone?c.outZSwings/c.outZone:null;
+    case 'zcon':   return c.inZSwings?((c.inZSwings-c.inZWhiffs)/c.inZSwings):null;
     case 'foul':   return c.n?c.fouls/c.n:0;
     case 'barrel': return c.bip?c.hhbarrel/c.bip:null;
     case 'xbh':    return c.hits?c.xbh/c.hits:null;
@@ -770,6 +792,10 @@ function _anColor(val,mid){
     baa:    {hi:0.350,lo:0.220,hg:false},
     whiff:  {hi:0.28,lo:0.10,hg:true},
     swstr:  {hi:0.15,lo:0.05,hg:true},
+    swing:  {hi:0.55,lo:0.38,hg:true},
+    zswing: {hi:0.72,lo:0.52,hg:true},
+    chase:  {hi:0.35,lo:0.18,hg:true},
+    zcon:   {hi:0.88,lo:0.68,hg:false},
     barrel: {hi:0.15,lo:0.04,hg:false},
     xbh:    {hi:0.40,lo:0.15,hg:false},
     k:      {hi:0.33,lo:0.10,hg:true},
@@ -839,6 +865,18 @@ function renderAnalytics(){
     return;
   }
 
+  if(_anMatrixView==='zone_heat'){
+    document.getElementById('an-body').innerHTML=`<div style="padding:16px;">${filtersHTML}${_renderZoneHeat(pitches)}</div>`;
+    return;
+  }
+
+  if(_anMatrixView==='swing_map'){
+    document.getElementById('an-body').innerHTML=`<div style="padding:16px;">${filtersHTML}${_renderSwingMap(pitches)}</div>`;
+    const swFiltered=_anZonePT==='_all'?pitches:pitches.filter(p=>p.pt===_anZonePT);
+    requestAnimationFrame(()=>_drawSwingMapCanvas('an-swing-cv',swFiltered));
+    return;
+  }
+
   if(!pitches.length){
     document.getElementById('an-body').innerHTML=`<div style="padding:16px;">${filtersHTML}${chipsHTML}<div style="text-align:center;padding:40px 20px;color:var(--text2);font-size:14px;">No pitches match the current filters.</div></div>`;
     return;
@@ -895,7 +933,51 @@ function renderAnalytics(){
       </div>
     </div>
     <div style="margin-top:14px;font-size:11px;color:var(--text3);text-align:center;">${pitches.length} pitches · ${ptPresent.length} pitch types</div>
+    ${_renderSpecialStats(pitches)}
     <button onclick="showBrowsePitches()" style="margin-top:12px;width:100%;padding:11px;background:var(--bg3);border:1.5px solid var(--border2);color:var(--text2);font-weight:700;font-size:13px;border-radius:var(--rsm);cursor:pointer;">Browse Pitches →</button>
+  </div>`;
+}
+
+function _renderSpecialStats(pitches){
+  // First-pitch swing%: all 0-0 pitches
+  const fp=pitches.filter(p=>p.ballsBefore===0&&p.strikesBefore===0);
+  let fpSwings=0;
+  fp.forEach(p=>{
+    const isSwingK=p.rt==='k'||p.rt==='d3k';
+    if(p.rt==='swstr'||p.rt==='foul'||p.rt==='bip'||p.rt==='hr'||isSwingK) fpSwings++;
+  });
+  const fpPct=fp.length?fpSwings/fp.length:null;
+
+  // 2-strike chase%: shadow-zone pitches with 2 strikes
+  let twoK=0,twoKChase=0;
+  pitches.forEach(p=>{
+    if(p.strikesBefore!==2||p.zx==null||p.zy==null) return;
+    const zn=getZoneNum(p.zx,p.zy);
+    if(zn<11||zn>14) return;
+    twoK++;
+    const isSwingK=p.rt==='k'||p.rt==='d3k';
+    if(p.rt==='swstr'||p.rt==='foul'||p.rt==='bip'||p.rt==='hr'||isSwingK) twoKChase++;
+  });
+  const twoKPct=twoK?twoKChase/twoK:null;
+
+  if(fpPct===null&&twoKPct===null) return '';
+
+  const card=(label,val,mid,sub)=>{
+    const fmt=val===null?'—':_anFmt(val,mid);
+    const col=val!==null?_anColor(val,mid):'color:var(--text3)';
+    return `<div style="flex:1;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--rsm);padding:10px 6px;text-align:center;">
+      <div style="font-size:18px;font-weight:800;${col||'color:var(--text)'};">${fmt}</div>
+      <div style="font-size:10px;font-weight:700;color:var(--text2);margin-top:3px;">${label}</div>
+      <div style="font-size:9px;color:var(--text3);margin-top:1px;">${sub}</div>
+    </div>`;
+  };
+
+  return `<div style="margin-top:14px;">
+    <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Situation Stats</div>
+    <div style="display:flex;gap:8px;">
+      ${card('FP Swing%',fpPct,'swing',`${fpSwings}/${fp.length} at 0-0`)}
+      ${card('2K Chase%',twoKPct,'chase',`${twoKChase}/${twoK} shadow, 2-strike`)}
+    </div>
   </div>`;
 }
 
@@ -964,14 +1046,32 @@ function showAnCell(pt,b,s){
       </div>${rvRows}`;
   }
 
+  const hasLoc=cellPitches.some(p=>p.zx!=null);
+  const cellLegend=[
+    {col:'#e85555',lbl:'Whiff'},{col:'#55e87a',lbl:'In Play'},
+    {col:'#f5c842',lbl:'Foul'},{col:'#4a9eff',lbl:'Called K'},
+    {col:'rgba(255,255,255,0.35)',lbl:'Ball'},
+  ].map(({col,lbl})=>`<span style="display:inline-flex;align-items:center;gap:3px;"><span style="width:7px;height:7px;border-radius:50%;background:${col};display:inline-block;"></span><span style="font-size:9px;color:var(--text3);">${lbl}</span></span>`).join('');
+  const zoneSection=hasLoc?`
+    <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin:14px 0 6px;">Pitch Locations</div>
+    <div style="display:flex;justify-content:center;margin-bottom:6px;">
+      <canvas id="an-cell-zone-cv" width="200" height="220" style="display:block;width:100%;max-width:220px;border-radius:var(--rsm);"></canvas>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:4px;">${cellLegend}</div>`:'';
+
   showModal(`<span style="font-size:13px;">${ptName} · ${b}-${s}</span>`,`
     <div style="font-size:12px;color:var(--text2);margin-bottom:10px;">n = ${c.n} pitches</div>
     ${nWarn}
     ${metricRows}
     ${(bipRows||hrRow)?`<div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin:14px 0 6px;">BIP Breakdown</div>${bipRows}${hrRow}`:''}
     ${runsSection}
-    <button onclick="showPitchView('${pt}',${b},${s})" style="margin-top:16px;width:100%;padding:11px;background:var(--accent);color:#fff;font-weight:700;font-size:14px;border:none;border-radius:var(--rsm);cursor:pointer;">View Pitches →</button>
+    ${zoneSection}
+    <div style="display:flex;gap:8px;margin-top:16px;">
+      <button onclick="showPitchView('${pt}',${b},${s})" style="flex:1;padding:11px;background:var(--bg3);border:1.5px solid var(--border2);color:var(--text);font-weight:700;font-size:13px;border-radius:var(--rsm);cursor:pointer;">Pitches →</button>
+      <button onclick="_goSwingMap('${pt}')" style="flex:1;padding:11px;background:var(--accent);color:#fff;font-weight:700;font-size:13px;border:none;border-radius:var(--rsm);cursor:pointer;">Swing Map →</button>
+    </div>
   `);
+  if(hasLoc) requestAnimationFrame(()=>_drawSwingMapCanvas('an-cell-zone-cv',cellPitches));
 }
 
 function showZoneKey(){
@@ -1014,6 +1114,386 @@ function showZoneKey(){
     <div style="margin-top:8px;">${legend}</div>
     <div style="margin-top:10px;font-size:11px;color:var(--text3);">Zones follow Baseball Savant convention. "In/Away" based on catcher's perspective — flip mentally for LHB.</div>
   `);
+}
+
+// ══════════════════════════════════════════
+// ZONE HEAT MAP
+// ══════════════════════════════════════════
+
+const ZH_METRICS=[
+  {id:'usage',  label:'Freq',    desc:'% of located pitches thrown to this zone'},
+  {id:'strike', label:'Str%',    desc:'Strikes ÷ pitches in zone'},
+  {id:'swing',  label:'Swing%',  desc:'Swings ÷ pitches in zone'},
+  {id:'whiff',  label:'Whiff%',  desc:'Whiffs ÷ swings in zone'},
+  {id:'swstr',  label:'SwStr%',  desc:'Whiffs ÷ pitches in zone'},
+  {id:'chase',  label:'Chase%',  desc:'Swings ÷ out-of-zone pitches (shadow zones only)'},
+  {id:'zcon',   label:'Z-Con%',  desc:'Zone contact (swings − misses) ÷ zone swings (strike zones only)'},
+  {id:'baa',    label:'BAA',     desc:'Hits ÷ at-bats ending in this zone'},
+];
+
+function _buildZoneCells(pitches){
+  const cells={};
+  let locatedN=0;
+  pitches.forEach(p=>{
+    if(p.zx==null||p.zy==null) return;
+    locatedN++;
+    const zn=getZoneNum(p.zx,p.zy);
+    if(!cells[zn]) cells[zn]={n:0,strikes:0,swings:0,swstr:0,bip:0,hits:0,
+      terminal:0,abTerm:0,hitsTerm:0};
+    const c=cells[zn]; c.n++;
+    if(p.isStrike) c.strikes++;
+    const isBIP=p.rt==='bip',isHR=p.rt==='hr';
+    const isSwingK=p.rt==='k'||p.rt==='d3k';
+    const isSwstr=p.rt==='swstr',isFoul=p.rt==='foul';
+    const isSwing=isSwstr||isFoul||isBIP||isHR||isSwingK;
+    if(isSwing) c.swings++;
+    if(isSwstr||isSwingK) c.swstr++;
+    if(isBIP||isHR){ c.bip++; if(p.bipOut==='hit'||isHR) c.hits++; }
+    if(p.isTerm){
+      c.terminal++;
+      const isBB=p.rt==='bb'||p.rt==='ibb';
+      const isHBP=p.rt==='hbp';
+      const isSAC=isBIP&&p.bipOut==='sac';
+      if(!isBB&&!isHBP&&!isSAC) c.abTerm++;
+      if(p.bipOut==='hit'||isHR) c.hitsTerm++;
+    }
+  });
+  Object.values(cells).forEach(c=>c.countTotal=locatedN);
+  return {cells,locatedN};
+}
+
+function _zhVal(c,zn,mid){
+  if(!c||c.n<1) return null;
+  switch(mid){
+    case 'usage':  return c.countTotal?c.n/c.countTotal:0;
+    case 'strike': return c.n?c.strikes/c.n:0;
+    case 'swing':  return c.n?c.swings/c.n:0;
+    case 'whiff':  return c.swings?c.swstr/c.swings:null;
+    case 'swstr':  return c.n?c.swstr/c.n:0;
+    case 'baa':    return c.abTerm?c.hitsTerm/c.abTerm:null;
+    case 'chase':  return (zn>=11&&zn<=14)?c.swings/c.n:null;
+    case 'zcon':   return (zn>=1&&zn<=9&&c.swings)?(c.swings-c.swstr)/c.swings:null;
+  }
+  return null;
+}
+
+function _zhBgColor(val,mid){
+  if(val===null||val===undefined) return 'rgba(255,255,255,0.02)';
+  const T={
+    usage:  {hi:0.20,lo:0.02,hg:null},
+    strike: {hi:0.65,lo:0.44,hg:true},
+    swing:  {hi:0.55,lo:0.38,hg:true},
+    whiff:  {hi:0.28,lo:0.10,hg:true},
+    swstr:  {hi:0.15,lo:0.05,hg:true},
+    baa:    {hi:0.350,lo:0.220,hg:false},
+    chase:  {hi:0.35,lo:0.18,hg:true},
+    zcon:   {hi:0.88,lo:0.68,hg:false},
+  };
+  const t=T[mid]; if(!t) return 'rgba(255,255,255,0.02)';
+  const norm=Math.max(0,Math.min(1,(val-t.lo)/(t.hi-t.lo)));
+  if(t.hg===null){
+    return `rgba(74,158,255,${(0.08+norm*0.52).toFixed(2)})`;
+  }
+  if(t.hg){
+    const r=Math.round(200-115*norm);
+    const g=Math.round(60+195*norm);
+    return `rgba(${r},${g},70,0.55)`;
+  } else {
+    const r=Math.round(85+115*norm);
+    const g=Math.round(220-160*norm);
+    return `rgba(${r},${g},70,0.55)`;
+  }
+}
+
+function _zhTextColor(val,mid){
+  const css=_anColor(val,mid);
+  if(css.includes('--green')) return '#5ce870';
+  if(css.includes('--red'))   return '#e85555';
+  return 'rgba(255,255,255,0.9)';
+}
+
+function _renderZoneHeat(pitches){
+  if(!pitches.length) return `<div style="text-align:center;padding:40px 20px;color:var(--text2);font-size:14px;">No pitches match the current filters.</div>`;
+
+  const activeMid=ZH_METRICS.find(m=>m.id===_anMetric)?_anMetric:'usage';
+  const activeMeta=ZH_METRICS.find(m=>m.id===activeMid);
+
+  const allPT=['_all',...AN_PT_ORDER.filter(pt=>pitches.some(p=>p.pt===pt))];
+  const filtered=_anZonePT==='_all'?pitches:pitches.filter(p=>p.pt===_anZonePT);
+  const {cells,locatedN}=_buildZoneCells(filtered);
+
+  const _btn=(label,onclick,active,color)=>`<button onclick="${onclick}" style="flex-shrink:0;padding:5px 10px;font-size:11px;font-weight:700;border-radius:20px;border:1.5px solid ${active?'var(--accent)':'var(--border2)'};background:${active?'var(--accent)':'var(--bg3)'};color:${active?(color||'#fff'):'var(--text2)'};cursor:pointer;white-space:nowrap;">${label}</button>`;
+
+  const ptChips=allPT.map(pt=>_btn(
+    pt==='_all'?'All':pt,
+    `setAnZonePT('${pt}')`,
+    _anZonePT===pt,
+    pt!=='_all'?_ptFamilyColor(pt):null
+  )).join('');
+
+  const metricChips=ZH_METRICS.map(m=>_btn(m.label,`setAnMetric('${m.id}')`,activeMid===m.id)).join('');
+
+  // SVG zone grid — 5×5, CZ = cell size
+  const CZ=54, W=5*CZ, H=5*CZ;
+  function cellZn(col,row){
+    if(row>=1&&row<=3&&col>=1&&col<=3) return (row-1)*3+(col-1)+1;
+    const arm=col<=2,top=row<=2;
+    return top?(arm?11:12):(arm?13:14);
+  }
+
+  let svgCells='';
+  for(let row=0;row<5;row++){
+    for(let col=0;col<5;col++){
+      const zn=cellZn(col,row);
+      const c=cells[zn];
+      const val=_zhVal(c,zn,activeMid);
+      const bg=_zhBgColor(val,activeMid);
+      const x=col*CZ,y=row*CZ;
+      const inSZ=row>=1&&row<=3&&col>=1&&col<=3;
+      const fmtVal=val===null?'—':_anFmt(val,activeMid);
+      const txtCol=val!==null?_zhTextColor(val,activeMid):'rgba(255,255,255,0.25)';
+      const n=c?c.n:0;
+      svgCells+=`<rect x="${x}" y="${y}" width="${CZ}" height="${CZ}" fill="${bg}" rx="1"/>`;
+      svgCells+=`<rect x="${x+0.5}" y="${y+0.5}" width="${CZ-1}" height="${CZ-1}" fill="none" stroke="${inSZ?'rgba(255,255,255,0.14)':'rgba(255,255,255,0.05)'}" stroke-width="0.7"/>`;
+      svgCells+=`<text x="${x+CZ/2}" y="${y+CZ*0.46}" text-anchor="middle" dominant-baseline="middle" font-size="12" font-weight="800" fill="${txtCol}" font-family="-apple-system,sans-serif">${fmtVal}</text>`;
+      if(n>0) svgCells+=`<text x="${x+CZ/2}" y="${y+CZ*0.76}" text-anchor="middle" font-size="8" fill="rgba(255,255,255,0.28)" font-family="-apple-system,sans-serif">${n}</text>`;
+    }
+  }
+  // Strike zone border on top
+  svgCells+=`<rect x="${CZ}" y="${CZ}" width="${CZ*3}" height="${CZ*3}" fill="none" stroke="rgba(255,255,255,0.78)" stroke-width="2"/>`;
+  // Home plate
+  const hpX=W/2,hpY=H+18;
+  svgCells+=`<polygon points="${hpX-15},${hpY-9} ${hpX+15},${hpY-9} ${hpX+15},${hpY} ${hpX},${hpY+10} ${hpX-15},${hpY}" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.42)" stroke-width="1.5"/>`;
+  svgCells+=`<text x="${W/2}" y="${H+34}" text-anchor="middle" font-size="8.5" fill="rgba(255,255,255,0.22)" font-family="-apple-system,sans-serif">Catcher's view · arm side left</text>`;
+
+  const svg=`<svg width="${W}" height="${H+40}" viewBox="0 0 ${W} ${H+40}" style="display:block;width:100%;max-width:320px;border-radius:var(--rsm);">
+    <rect x="0" y="0" width="${W}" height="${H}" fill="rgba(10,12,20,0.97)" rx="4"/>
+    ${svgCells}
+  </svg>`;
+
+  return `<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px;">${ptChips}</div>
+    <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px;">${metricChips}</div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:12px;">${activeMeta?.desc||''}</div>
+    <div style="display:flex;justify-content:center;">${svg}</div>
+    <div style="margin-top:8px;font-size:10px;color:var(--text3);text-align:center;">${locatedN} located pitches${_anZonePT!=='_all'?' · '+_anZonePT:''} · ${pitches.length-locatedN>0?`${pitches.length-locatedN} unlocated excluded`:'all located'}</div>`;
+}
+
+// ══════════════════════════════════════════
+// SWING MAP
+// ══════════════════════════════════════════
+
+function _computeSwingStats(pitches){
+  let n=0,swings=0,whiffs=0,inZone=0,inZSwings=0,inZWhiffs=0,outZone=0,outZSwings=0;
+  pitches.forEach(p=>{
+    if(!p.pt) return;
+    n++;
+    const isBIP=p.rt==='bip',isHR=p.rt==='hr';
+    const isSwingK=p.rt==='k'||p.rt==='d3k';
+    const isSwstr=p.rt==='swstr',isFoul=p.rt==='foul';
+    const isSwing=isSwstr||isFoul||isBIP||isHR||isSwingK;
+    const isMiss=isSwstr||isSwingK;
+    if(isSwing) swings++;
+    if(isMiss) whiffs++;
+    if(p.zx!=null&&p.zy!=null){
+      const zn=getZoneNum(p.zx,p.zy);
+      if(zn>=1&&zn<=9){inZone++;if(isSwing)inZSwings++;if(isMiss)inZWhiffs++;}
+      if(zn>=11&&zn<=14){outZone++;if(isSwing)outZSwings++;}
+    }
+  });
+  return{
+    n,swings,whiffs,inZone,inZSwings,inZWhiffs,outZone,outZSwings,
+    swingPct:n?swings/n:null,
+    zSwingPct:inZone?inZSwings/inZone:null,
+    chasePct:outZone?outZSwings/outZone:null,
+    whiffPct:swings?whiffs/swings:null,
+    zConPct:inZSwings?(inZSwings-inZWhiffs)/inZSwings:null,
+  };
+}
+
+function _swingDotColor(p){
+  const isSwingK=p.rt==='k'||p.rt==='d3k';
+  if(p.rt==='swstr'||isSwingK) return '#e85555';
+  if(p.rt==='bip'||p.rt==='hr') return '#55e87a';
+  if(p.rt==='foul') return '#f5c842';
+  if(p.isStrike) return '#4a9eff';
+  return 'rgba(255,255,255,0.22)';
+}
+
+function _drawSwingMapCanvas(id,pitches){
+  const cv=document.getElementById(id);
+  if(!cv) return;
+  const W=cv.width,H=cv.height;
+  const ctx=cv.getContext('2d');
+  ctx.clearRect(0,0,W,H);
+
+  ctx.fillStyle='rgba(10,12,20,0.97)'; ctx.fillRect(0,0,W,H);
+  const cw=W/5,ch=H/5;
+  const szX=cw,szY=ch,szW=cw*3,szH=ch*3;
+
+  // Outer grid
+  ctx.strokeStyle='rgba(255,255,255,0.08)'; ctx.lineWidth=0.7;
+  for(let i=1;i<5;i++){
+    ctx.beginPath();ctx.moveTo(i*cw,0);ctx.lineTo(i*cw,H);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(0,i*ch);ctx.lineTo(W,i*ch);ctx.stroke();
+  }
+
+  // Strike zone tint + inner grid
+  ctx.fillStyle='rgba(255,255,255,0.03)'; ctx.fillRect(szX,szY,szW,szH);
+  ctx.strokeStyle='rgba(255,255,255,0.18)'; ctx.lineWidth=0.7;
+  for(let i=1;i<3;i++){
+    const x=szX+szW/3*i; ctx.beginPath();ctx.moveTo(x,szY);ctx.lineTo(x,szY+szH);ctx.stroke();
+    const y=szY+szH/3*i; ctx.beginPath();ctx.moveTo(szX,y);ctx.lineTo(szX+szW,y);ctx.stroke();
+  }
+
+  // Strike zone border
+  ctx.strokeStyle='rgba(255,255,255,0.80)'; ctx.lineWidth=2;
+  ctx.strokeRect(szX,szY,szW,szH);
+
+  // Home plate
+  const hpX=W/2,hpY=szY+szH+ch*0.44,hpW=cw*0.85,hpH=ch*0.36;
+  ctx.beginPath();
+  ctx.moveTo(hpX-hpW/2,hpY-hpH/2); ctx.lineTo(hpX+hpW/2,hpY-hpH/2);
+  ctx.lineTo(hpX+hpW/2,hpY); ctx.lineTo(hpX,hpY+hpH/2); ctx.lineTo(hpX-hpW/2,hpY);
+  ctx.closePath();
+  ctx.fillStyle='rgba(255,255,255,0.12)'; ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,0.45)'; ctx.lineWidth=1; ctx.stroke();
+
+  const located=pitches.filter(p=>p.zx!=null);
+  if(!located.length){
+    ctx.fillStyle='rgba(255,255,255,0.22)';
+    ctx.font=`${Math.round(W*0.07)}px -apple-system`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('No located pitches',W/2,H*0.88);
+    return;
+  }
+
+  // Draw in layers so whiffs render on top of balls
+  const layers={ball:[],calledK:[],foul:[],bip:[],whiff:[]};
+  located.forEach(p=>{
+    const isSwingK=p.rt==='k'||p.rt==='d3k';
+    if(p.rt==='swstr'||isSwingK)          layers.whiff.push(p);
+    else if(p.rt==='bip'||p.rt==='hr')    layers.bip.push(p);
+    else if(p.rt==='foul')                layers.foul.push(p);
+    else if(p.isStrike)                   layers.calledK.push(p);
+    else                                  layers.ball.push(p);
+  });
+
+  ['ball','calledK','foul','bip','whiff'].forEach(layer=>{
+    layers[layer].forEach(p=>{
+      const ax=p.zx*W,ay=p.zy*H;
+      const col=_swingDotColor(p);
+      ctx.beginPath(); ctx.arc(ax,ay,3.5,0,Math.PI*2);
+      ctx.fillStyle=col+'cc';
+      ctx.strokeStyle='rgba(0,0,0,0.4)'; ctx.lineWidth=0.7;
+      ctx.fill(); ctx.stroke();
+    });
+  });
+}
+
+function _renderSwingMap(pitches){
+  if(!pitches.length) return `<div style="text-align:center;padding:40px 20px;color:var(--text2);font-size:14px;">No pitches match the current filters.</div>`;
+
+  const allPT=['_all',...AN_PT_ORDER.filter(pt=>pitches.some(p=>p.pt===pt))];
+  const filtered=_anZonePT==='_all'?pitches:pitches.filter(p=>p.pt===_anZonePT);
+  const stats=_computeSwingStats(filtered);
+  const locatedN=filtered.filter(p=>p.zx!=null).length;
+
+  const _btn=(label,onclick,active)=>`<button onclick="${onclick}" style="flex-shrink:0;padding:5px 10px;font-size:11px;font-weight:700;border-radius:20px;border:1.5px solid ${active?'var(--accent)':'var(--border2)'};background:${active?'var(--accent)':'var(--bg3)'};color:${active?'#fff':'var(--text2)'};cursor:pointer;white-space:nowrap;">${label}</button>`;
+  const ptChips=allPT.map(pt=>_btn(pt==='_all'?'All':pt,`setAnZonePT('${pt}')`,_anZonePT===pt)).join('');
+
+  const statDefs=[
+    {label:'Swing%', val:stats.swingPct, mid:'swing'},
+    {label:'Z-Swing%',val:stats.zSwingPct,mid:'zswing'},
+    {label:'Chase%',  val:stats.chasePct, mid:'chase'},
+    {label:'Whiff%',  val:stats.whiffPct, mid:'whiff'},
+    {label:'Z-Con%',  val:stats.zConPct,  mid:'zcon'},
+  ];
+  const statCards=statDefs.map(({label,val,mid})=>{
+    const fmt=val===null?'—':_anFmt(val,mid);
+    const col=val!==null?_anColor(val,mid):'color:var(--text3)';
+    return `<div style="flex:1;min-width:0;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--rsm);padding:8px 4px;text-align:center;">
+      <div style="font-size:15px;font-weight:800;${col||'color:var(--text)'};">${fmt}</div>
+      <div style="font-size:9px;color:var(--text3);margin-top:2px;font-weight:700;letter-spacing:0.3px;">${label}</div>
+    </div>`;
+  }).join('');
+
+  const legendItems=[
+    {col:'#e85555',label:'Whiff'},{col:'#55e87a',label:'In Play'},
+    {col:'#f5c842',label:'Foul'},{col:'#4a9eff',label:'Called K'},
+    {col:'rgba(255,255,255,0.35)',label:'Ball'},
+  ];
+  const legend=legendItems.map(({col,label})=>`<div style="display:flex;align-items:center;gap:4px;">
+    <div style="width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0;"></div>
+    <span style="font-size:10px;color:var(--text3);">${label}</span>
+  </div>`).join('');
+
+  return `<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px;">${ptChips}</div>
+    <div style="display:flex;gap:5px;margin-bottom:14px;">${statCards}</div>
+    <div style="display:flex;justify-content:center;margin-bottom:8px;">
+      <canvas id="an-swing-cv" width="240" height="265" style="display:block;width:100%;max-width:300px;border-radius:var(--rsm);"></canvas>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-bottom:6px;">${legend}</div>
+    <div style="font-size:10px;color:var(--text3);text-align:center;">${locatedN} located · ${filtered.length-locatedN} unlocated excluded${_anZonePT!=='_all'?' · '+_anZonePT:''}</div>`;
+}
+
+function showBatterTendencies(batterName,batterHand){
+  const allPitches=[];
+  const abSet=new Set(), gameSet=new Set();
+  (S.games||[]).forEach(g=>{
+    (g.pitches||[]).forEach(p=>{
+      if(p.bName===batterName){
+        allPitches.push(p);
+        if(p.abNum!=null) abSet.add(`${g.id}_${p.abNum}`);
+        gameSet.add(g.id);
+      }
+    });
+  });
+
+  if(!allPitches.length){
+    showModal(batterName+' · Tendencies','<div style="text-align:center;padding:32px 20px;color:var(--text2);font-size:14px;">No pitch data for this batter yet.</div>');
+    return;
+  }
+
+  const stats=_computeSwingStats(allPitches);
+  const locatedN=allPitches.filter(p=>p.zx!=null).length;
+
+  const statDefs=[
+    {label:'Swing%', val:stats.swingPct, mid:'swing'},
+    {label:'Z-Swing%',val:stats.zSwingPct,mid:'zswing'},
+    {label:'Chase%',  val:stats.chasePct, mid:'chase'},
+    {label:'Whiff%',  val:stats.whiffPct, mid:'whiff'},
+    {label:'Z-Con%',  val:stats.zConPct,  mid:'zcon'},
+  ];
+  const statCards=statDefs.map(({label,val,mid})=>{
+    const fmt=val===null?'—':_anFmt(val,mid);
+    const col=val!==null?_anColor(val,mid):'color:var(--text3)';
+    return `<div style="flex:1;min-width:0;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--rsm);padding:8px 4px;text-align:center;">
+      <div style="font-size:15px;font-weight:800;${col||'color:var(--text)'};">${fmt}</div>
+      <div style="font-size:9px;color:var(--text3);margin-top:2px;font-weight:700;">${label}</div>
+    </div>`;
+  }).join('');
+
+  const legend=[
+    {col:'#e85555',lbl:'Whiff'},{col:'#55e87a',lbl:'In Play'},
+    {col:'#f5c842',lbl:'Foul'},{col:'#4a9eff',lbl:'Called K'},
+    {col:'rgba(255,255,255,0.35)',lbl:'Ball'},
+  ].map(({col,lbl})=>`<span style="display:inline-flex;align-items:center;gap:3px;"><span style="width:7px;height:7px;border-radius:50%;background:${col};display:inline-block;"></span><span style="font-size:9px;color:var(--text3);">${lbl}</span></span>`).join('');
+
+  const nWarn=allPitches.length<15?`<div style="font-size:11px;color:var(--orange,#f0873a);background:rgba(240,135,58,0.1);border-radius:var(--rsm);padding:7px 10px;margin-bottom:10px;">Small sample — ${allPitches.length} pitches</div>`:'';
+
+  showModal(`${batterName} · Tendencies`,`
+    ${nWarn}
+    <div style="font-size:11px;color:var(--text3);margin-bottom:10px;">Bats ${batterHand||'?'} · ${allPitches.length} pitches · ${abSet.size} AB${abSet.size!==1?'s':''} · ${gameSet.size} game${gameSet.size!==1?'s':''}</div>
+    <div style="display:flex;gap:5px;margin-bottom:12px;">${statCards}</div>
+    ${locatedN>0?`
+      <div style="display:flex;justify-content:center;margin-bottom:6px;">
+        <canvas id="an-batter-cv" width="200" height="220" style="display:block;width:100%;max-width:220px;border-radius:var(--rsm);"></canvas>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:4px;">${legend}</div>
+      <div style="font-size:10px;color:var(--text3);text-align:center;">${locatedN} of ${allPitches.length} pitches located</div>
+    `:'<div style="font-size:12px;color:var(--text3);text-align:center;padding:8px 0;">No pitch location data for this batter.</div>'}
+  `);
+  if(locatedN>0) requestAnimationFrame(()=>_drawSwingMapCanvas('an-batter-cv',allPitches));
 }
 
 // ══════════════════════════════════════════

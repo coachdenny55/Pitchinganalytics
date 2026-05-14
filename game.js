@@ -2736,7 +2736,8 @@ function showBatterCardOptions(i){
       ? `<div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">At-Bats This Game</div>
          <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;">${abRows}</div>`
       : '<div style="font-size:13px;color:var(--text3);margin-bottom:14px;text-align:center;">No at-bats yet this game</div>'}
-    <button class="btn btn-block" onclick="showSubBatterForSlot(${i})">Substitution</button>
+    <button class="btn btn-block" onclick="showBatterTendencies('${b.name.replace(/'/g,"\\'")}','${b.hand||'R'}')">Tendencies →</button>
+    <button class="btn btn-block" style="margin-top:8px;" onclick="showSubBatterForSlot(${i})">Substitution</button>
     <button class="btn btn-block" style="margin-top:8px;" onclick="showLineup()">← Lineup</button>
   `);
 }
