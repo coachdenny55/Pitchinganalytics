@@ -15,6 +15,7 @@ function go(name){
   if(name==='command') renderCommand();
   if(name==='practice') renderPractice();
   if(name==='practice-setup') renderPracSetup();
+  if(name==='practice-stats') renderPracSeasonStats();
 }
 function showHam(){
   document.getElementById('ham-ov').classList.add('on');

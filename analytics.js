@@ -2404,7 +2404,7 @@ function renderPitchView(){
     <div style="padding:0 12px 16px;">
       <div style="font-size:11px;color:var(--text2);font-weight:600;margin-bottom:6px;">Zone Map · ${withLoc.length} pitches with location</div>
       <div style="display:flex;justify-content:center;">
-        <canvas id="pv-zone-cv" width="220" height="220" style="display:block;cursor:pointer;border-radius:var(--rsm);"></canvas>
+        <canvas id="pv-zone-cv" width="220" height="243" style="display:block;cursor:pointer;border-radius:var(--rsm);"></canvas>
       </div>
       <div style="margin-top:8px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
         ${[['#e85555','FB/2S/SI/FC'],['#4a9eff','SL/SV/CB'],['#4caf7d','CH/FS/FO/KN/EP'],['#9090a8','OT']].map(([col,lbl])=>`<div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text3);"><div style="width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0;"></div>${lbl}</div>`).join('')}

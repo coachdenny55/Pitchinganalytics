@@ -17,11 +17,24 @@ const FB_PRESETS=[
   {id:'fb_only',label:'FB Only',fbPct:1.0},
 ];
 const PRAC_RESULTS=['CS','Ball','Foul','Sw&M','GB','LD','Fly','PU'];
+const DUEL_FORMATS=[
+  {id:'alternate',label:'Alternate Pitches',sub:'Take turns one pitch at a time'},
+  {id:'full',label:'Full Bullpen',sub:'Full count each, then compare scores'},
+  {id:'horse_player',label:'HORSE — Player Called',sub:'Caller picks pitch & zone, both throw it'},
+  {id:'horse_scripted',label:'HORSE — App Scripted',sub:'App scripts pitch & zone, both throw it'},
+  {id:'fixed_player',label:'Fixed Count — Player Called',sub:'Caller picks each round, both throw for pts'},
+  {id:'fixed_scripted',label:'Fixed Count — App Scripted',sub:'App scripts each round, both throw for pts'},
+];
+const HORSE_WORDS=[{id:'PIG',label:'PIG (3 letters)'},{id:'BULL',label:'BULL (4 letters)'},{id:'HORSE',label:'HORSE (5 letters)'}];
+
+function _isNewDuelFmt(fmt){return['horse_player','horse_scripted','fixed_player','fixed_scripted'].includes(fmt);}
+function _isHorseFmt(fmt){return fmt==='horse_player'||fmt==='horse_scripted';}
+function _isScriptedDuelFmt(fmt){return fmt==='horse_scripted'||fmt==='fixed_scripted';}
 
 let _PR=null;
 let _pracZoneBound=false;
 let _pracQuickAddQueue=[];
-let _PS={step:0,mode:null,selectedPitchers:[],pitchCount:20,fbPreset:'even',focusZones:[],duelFormat:'alternate',trackIntended:false};
+let _PS={step:0,mode:null,selectedPitchers:[],pitchCount:10,fbPreset:'even',focusZones:[],duelFormat:'alternate',horseWord:'HORSE',trackIntended:false};
 
 function _pracModeLabel(id){const m=PRAC_MODES.find(x=>x.id===id);return m?m.title:id;}
 
@@ -44,11 +57,15 @@ function renderPractice(){
       </div>
       <div style="font-size:12px;color:var(--text3);margin-top:4px;">${(p.pitches||[]).length} pitches · ${(p.pitchers||[]).map(x=>x.name.split(' ').pop()).join(', ')}</div>
     </div>`).join('')}`:''}
+    <button class="home-btn-sec" onclick="go('practice-stats')" style="margin-top:6px;">
+      <div class="home-btn-sec-left"><div>Practice Season Stats</div><div class="home-btn-sec-sub">All-time stats across every saved session</div></div>
+      <div class="home-btn-sec-right"><span class="home-chevron">›</span></div>
+    </button>
   `;
 }
 
 function pracQuickStart(modeId){
-  _PS={step:1,mode:modeId,selectedPitchers:[],pitchCount:20,fbPreset:'even',focusZones:[],duelFormat:'alternate',trackIntended:(modeId==='command')||!!(S.settings&&S.settings.trackIntendedDefault)};
+  _PS={step:1,mode:modeId,selectedPitchers:[],pitchCount:modeId==='duel'?10:20,fbPreset:'even',focusZones:[],duelFormat:'alternate',horseWord:'HORSE',trackIntended:(modeId==='command')||!!(S.settings&&S.settings.trackIntendedDefault)};
   go('practice-setup');
 }
 
@@ -136,16 +153,18 @@ function _renderPracSetupStep(step){
     const needsFocus=mode==='scripted'||mode==='live_bullpen'||mode==='command';
     const needsDuel=mode==='duel';
     const needsIntended=mode==='command';
+    const isHorseFmt=needsDuel&&_isHorseFmt(_PS.duelFormat);
+    const isFixedFmt=needsDuel&&(_PS.duelFormat==='fixed_player'||_PS.duelFormat==='fixed_scripted');
     body.innerHTML=`<div style="padding:16px;display:flex;flex-direction:column;gap:20px;">
-      <div>
-        <div class="section-title">Pitch Count</div>
+      ${isHorseFmt?'':`<div>
+        <div class="section-title">${isFixedFmt?'Rounds':'Pitch Count'}</div>
         <div style="display:flex;align-items:center;gap:8px;margin-top:10px;">
-          <button onclick="_PS.pitchCount=Math.max(1,(_PS.pitchCount||20)-1);document.getElementById('prac-cnt-in').value=_PS.pitchCount;" style="width:40px;height:40px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--rsm);font-size:22px;font-weight:400;color:var(--text);cursor:pointer;">−</button>
+          <button onclick="_PS.pitchCount=Math.max(1,(_PS.pitchCount||10)-1);document.getElementById('prac-cnt-in').value=_PS.pitchCount;" style="width:40px;height:40px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--rsm);font-size:22px;font-weight:400;color:var(--text);cursor:pointer;">−</button>
           <input type="number" id="prac-cnt-in" value="${_PS.pitchCount}" min="1" max="100" oninput="_PS.pitchCount=Math.min(100,Math.max(1,parseInt(this.value)||1))" style="width:76px;text-align:center;padding:10px 6px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--rsm);color:var(--text);font-size:20px;font-weight:700;font-family:inherit;">
-          <button onclick="_PS.pitchCount=Math.min(100,(_PS.pitchCount||20)+1);document.getElementById('prac-cnt-in').value=_PS.pitchCount;" style="width:40px;height:40px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--rsm);font-size:22px;font-weight:400;color:var(--text);cursor:pointer;">+</button>
-          <span style="font-size:13px;color:var(--text3);margin-left:4px;">pitches</span>
+          <button onclick="_PS.pitchCount=Math.min(100,(_PS.pitchCount||10)+1);document.getElementById('prac-cnt-in').value=_PS.pitchCount;" style="width:40px;height:40px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--rsm);font-size:22px;font-weight:400;color:var(--text);cursor:pointer;">+</button>
+          <span style="font-size:13px;color:var(--text3);margin-left:4px;">${isFixedFmt?'rounds':'pitches'}</span>
         </div>
-      </div>
+      </div>`}
       ${needsFB?`<div>
         <div class="section-title">Fastball Incorporation</div>
         <div style="font-size:12px;color:var(--text3);margin-bottom:2px;">First 3 pitches are always fastball.</div>
@@ -160,11 +179,21 @@ function _renderPracSetupStep(step){
       </div>`:''}
       ${needsDuel?`<div>
         <div class="section-title">Duel Format</div>
-        <div class="tog-row" style="max-width:340px;">
-          <div class="tog-btn${_PS.duelFormat==='alternate'?' on':''}" onclick="pracSetDuelFmt('alternate')">Alternate Pitches</div>
-          <div class="tog-btn${_PS.duelFormat==='full'?' on':''}" onclick="pracSetDuelFmt('full')">Full Bullpen</div>
+        <div style="display:flex;flex-direction:column;gap:6px;margin-top:10px;">
+          ${DUEL_FORMATS.map(f=>`<div class="prac-mode-card${_PS.duelFormat===f.id?' sel':''}" onclick="pracSetDuelFmt('${f.id}')" style="padding:10px 12px;">
+            <div class="prac-mode-info">
+              <div class="prac-mode-title" style="font-size:13px;">${f.label}</div>
+              <div class="prac-mode-desc">${f.sub}</div>
+            </div>
+            <span style="font-size:18px;color:${_PS.duelFormat===f.id?'var(--accent)':'var(--border2)'};">${_PS.duelFormat===f.id?'●':'○'}</span>
+          </div>`).join('')}
         </div>
-        <div style="font-size:12px;color:var(--text3);margin-top:8px;">${_PS.duelFormat==='alternate'?'Pitchers alternate one pitch at a time.':'Each pitcher throws their full count, then scores are compared.'}</div>
+        ${isHorseFmt?`<div style="margin-top:14px;">
+          <div class="section-title">HORSE Word</div>
+          <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
+            ${HORSE_WORDS.map(w=>`<div class="tog-btn${_PS.horseWord===w.id?' on':''}" onclick="pracSetHorseWord('${w.id}')" style="flex:1;text-align:center;">${w.label}</div>`).join('')}
+          </div>
+        </div>`:''}
       </div>`:''}
       ${needsIntended?`<div>
         <div class="section-title">Track Intended Location</div>
@@ -221,6 +250,7 @@ function pracToggleFocus(z){
   _renderPracSetupStep(2);
 }
 function pracSetDuelFmt(f){_PS.duelFormat=f;_renderPracSetupStep(2);}
+function pracSetHorseWord(w){_PS.horseWord=w;_renderPracSetupStep(2);}
 
 function pracSetupBack(){
   if(_PS.step===0) go('practice');
@@ -240,6 +270,7 @@ function pracSetupNext(){
 // ── Session ──
 function pracBeginSession(){
   if(!_PS.selectedPitchers.length||!_PS.mode)return;
+  const isNew=_isNewDuelFmt(_PS.duelFormat);
   _PR={
     id:'prac_'+Date.now(),
     subMode:_PS.mode,
@@ -249,21 +280,50 @@ function pracBeginSession(){
     fbPreset:_PS.fbPreset,
     focusZones:_PS.focusZones,
     duelFormat:_PS.duelFormat,
+    horseWord:_PS.horseWord||'HORSE',
     trackIntended:_PS.mode==='scripted'?false:(_PS.trackIntended||(_PS.mode==='command')),
     pitches:[],duelScores:{},
     _pitcherIdx:0,
     _pitchType:null,_zx:null,_zy:null,_izx:null,_izy:null,_result:null,
     _balls:0,_strikes:0,_duelPitchesThrown:{},_suggestion:null,_keepScenario:false,
+    // New duel (HORSE / fixed) state
+    _duelPhase:null,_duelRound:1,_duelCallerIdx:0,
+    _duelCalledType:null,_duelCalledCell:null,_duelCalledZx:null,_duelCalledZy:null,
+    _duelP1Throw:null,_duelLetters:{},
   };
-  _PR.pitchers.forEach(p=>{_PR.duelScores[p.appId]=0;_PR._duelPitchesThrown[p.appId]=0;});
-  // Generate first scripted suggestion and pre-select pitch type
+  _PR.pitchers.forEach(p=>{
+    _PR.duelScores[p.appId]=0;
+    _PR._duelPitchesThrown[p.appId]=0;
+    _PR._duelLetters[p.appId]='';
+  });
   if(_PS.mode==='scripted'){
     _PR._suggestion=_pracNextSuggestion(_PR.pitchers[0]);
     _PR._pitchType=_PR._suggestion.type;
   }
+  if(isNew){
+    const isScripted=_isScriptedDuelFmt(_PS.duelFormat);
+    _PR._duelPhase=isScripted?'throw1':'call';
+    _PR._pitcherIdx=0; // caller/P1 always starts
+    if(isScripted){
+      _PR._suggestion=_pracNextSuggestion(_PR.pitchers[0]);
+      _pracApplyScriptedDuelCall(_PR._suggestion);
+    }
+  }
   _pracZoneBound=false;
   go('practice-session');
   _renderPracSession();
+}
+
+// Sets _duelCalledType, _duelCalledCell, _duelCalledZx/Zy from a suggestion object
+function _pracApplyScriptedDuelCall(sg){
+  if(!_PR||!sg)return;
+  _PR._duelCalledType=sg.type;
+  _PR._pitchType=sg.type;
+  const z=sg.zone;
+  const sr=Math.floor((z-1)/3),sc=(z-1)%3;
+  _PR._duelCalledCell={row:sr,col:sc};
+  _PR._duelCalledZx=0.2+sc*0.2+0.1;
+  _PR._duelCalledZy=0.2+sr*0.2+0.1;
 }
 
 function _renderPracSession(){
@@ -271,10 +331,17 @@ function _renderPracSession(){
   const mode=_PR.subMode;
   const pitcher=_PR.pitchers[_PR._pitcherIdx];
   const pitchNum=_PR.pitches.length+1;
+  const isNewDuel=mode==='duel'&&_isNewDuelFmt(_PR.duelFormat);
+  const isHorseDuel=isNewDuel&&_isHorseFmt(_PR.duelFormat);
+  const duelPhase=_PR._duelPhase;
 
-  document.getElementById('prac-session-title').textContent=_pracModeLabel(mode);
+  document.getElementById('prac-session-title').textContent=isNewDuel?
+    `Duel — ${duelPhase==='call'?'Calling':duelPhase==='throw1'?'Throw 1':'Throw 2'}`:
+    _pracModeLabel(mode);
   document.getElementById('prac-sess-pitcher').textContent=pitcher.name;
-  document.getElementById('prac-sess-count').textContent=`Pitch ${pitchNum} of ${_PR.pitchCount}`;
+  document.getElementById('prac-sess-count').textContent=isNewDuel?
+    (isHorseDuel?`Round ${_PR._duelRound}`:`Round ${_PR._duelRound} of ${_PR.pitchCount}`):
+    `Pitch ${pitchNum} of ${_PR.pitchCount}`;
 
   const sw=document.getElementById('prac-sess-switch');
   if(sw) sw.style.display=(_PR.pitchers.length>1&&mode!=='duel')?'block':'none';
@@ -284,13 +351,41 @@ function _renderPracSession(){
   if(barsEl){
     let bars='';
     if(mode==='duel'){
-      bars+=`<div class="prac-duel-bar">${_PR.pitchers.map((p,i)=>{
-        const active=i===_PR._pitcherIdx;
-        return `<div class="prac-duel-half${active?' active':''}">
-          <div class="prac-duel-pname">${p.name.split(' ').pop()}</div>
-          <div class="prac-duel-pts">${_PR.duelScores[p.appId]||0}</div>
-        </div>`;
-      }).join('<div style="width:1px;background:var(--border);flex-shrink:0;"></div>')}</div>`;
+      if(isNewDuel){
+        const word=_PR.horseWord||'HORSE';
+        bars+=`<div class="prac-duel-bar">${_PR.pitchers.map((p,i)=>{
+          const active=i===_PR._pitcherIdx;
+          if(isHorseDuel){
+            const got=(_PR._duelLetters[p.appId]||'').length;
+            const spelled=word.slice(0,got).split('').map(ch=>`<span style="color:rgba(232,85,85,0.9);font-weight:800;">${ch}</span>`).join('');
+            const rem=word.slice(got).split('').map(ch=>`<span style="opacity:0.22;">${ch}</span>`).join('');
+            return `<div class="prac-duel-half${active?' active':''}">
+              <div class="prac-duel-pname">${p.name.split(' ').pop()}</div>
+              <div class="prac-duel-pts" style="font-size:15px;letter-spacing:4px;">${spelled}${rem}</div>
+            </div>`;
+          }else{
+            return `<div class="prac-duel-half${active?' active':''}">
+              <div class="prac-duel-pname">${p.name.split(' ').pop()}</div>
+              <div class="prac-duel-pts">${_PR.duelScores[p.appId]||0}</div>
+            </div>`;
+          }
+        }).join('<div style="width:1px;background:var(--border);flex-shrink:0;"></div>')}</div>`;
+        if(_isScriptedDuelFmt(_PR.duelFormat)&&_PR._suggestion&&(duelPhase==='throw1'||duelPhase==='throw2')){
+          const sg=_PR._suggestion;
+          bars+=`<div class="prac-script-card">
+            <div class="prac-script-hand ${sg.hand}">${sg.hand}HH</div>
+            <div class="prac-script-pitch">${sg.type} · <span class="prac-script-zone">Zone ${sg.zone}</span></div>
+          </div>`;
+        }
+      }else{
+        bars+=`<div class="prac-duel-bar">${_PR.pitchers.map((p,i)=>{
+          const active=i===_PR._pitcherIdx;
+          return `<div class="prac-duel-half${active?' active':''}">
+            <div class="prac-duel-pname">${p.name.split(' ').pop()}</div>
+            <div class="prac-duel-pts">${_PR.duelScores[p.appId]||0}</div>
+          </div>`;
+        }).join('<div style="width:1px;background:var(--border);flex-shrink:0;"></div>')}</div>`;
+      }
     }
     if(mode==='live_bullpen'){
       bars+=`<div class="prac-situation-bar">
@@ -313,7 +408,7 @@ function _renderPracSession(){
   // Score row (command / duel)
   const scoreRow=document.getElementById('prac-score-row');
   if(scoreRow){
-    if(mode==='command'||mode==='duel'){
+    if(mode==='command'||(mode==='duel'&&!isHorseDuel)){
       const pts=_PR.pitches.reduce((a,p)=>a+(p.score||0),0);
       const total=_PR.pitches.length;
       scoreRow.style.display='flex';
@@ -332,10 +427,10 @@ function _renderPracSession(){
     return`<button class="prac-t-btn${_PR._pitchType===t?' on':''}" data-pt="${esc}" onclick="pracSelType('${esc}')">${esc}</button>`;
   }).join('');
 
-  // Result row (hidden for command)
+  // Result row (hidden for command and new duel formats)
   const resultEl=document.getElementById('prac-result-row');
   if(resultEl){
-    if(mode==='command'){
+    if(mode==='command'||isNewDuel){
       resultEl.style.display='none';
     }else{
       resultEl.style.display='grid';
@@ -347,6 +442,16 @@ function _renderPracSession(){
   }
 
   _updatePracConfirm();
+
+  // New duel: update confirm button text
+  const confirmBtn=document.getElementById('prac-confirm-btn');
+  if(confirmBtn){
+    if(isNewDuel){
+      confirmBtn.textContent=duelPhase==='call'?'Lock In Call':'Log Throw';
+    }else{
+      confirmBtn.textContent='Log Pitch';
+    }
+  }
 
   // Bind zone canvas (once per session); touchstart handles mobile since touch-action:none suppresses click
   const cv=document.getElementById('prac-zone-cv');
@@ -418,6 +523,31 @@ function _drawPracZone(){
   // Strike zone
   const szX=cw,szY=ch,szW=cw*3,szH=ch*3;
   ctx.fillStyle='rgba(255,255,255,0.05)';ctx.fillRect(szX,szY,szW,szH);
+
+  // New duel: called/scripted zone cell highlight
+  if(_PR.subMode==='duel'&&_isNewDuelFmt(_PR.duelFormat)&&_PR._duelPhase){
+    const ph=_PR._duelPhase;
+    let drawCell=null,fillC,strokeC;
+    if(ph==='call'&&_PR._duelCalledCell){
+      drawCell=_PR._duelCalledCell;fillC='rgba(245,200,66,0.22)';strokeC='rgba(245,200,66,0.7)';
+    }else if((ph==='throw1'||ph==='throw2')&&_PR._duelCalledCell){
+      drawCell=_PR._duelCalledCell;fillC='rgba(74,158,255,0.22)';strokeC='rgba(74,158,255,0.7)';
+    }
+    if(drawCell){
+      const dcx=szX+drawCell.col*(szW/3),dcy=szY+drawCell.row*(szH/3),dcw=szW/3,dch=szH/3;
+      ctx.fillStyle=fillC;ctx.fillRect(dcx,dcy,dcw,dch);
+      ctx.strokeStyle=strokeC;ctx.lineWidth=2;ctx.strokeRect(dcx+1,dcy+1,dcw-2,dch-2);
+    }
+    if(ph==='throw2'&&_PR._duelP1Throw&&_PR._duelP1Throw.zx!=null){
+      const gx=_PR._duelP1Throw.zx*W,gy=_PR._duelP1Throw.zy*H;
+      ctx.beginPath();ctx.arc(gx,gy,11,0,Math.PI*2);
+      ctx.fillStyle='rgba(74,200,100,0.18)';ctx.fill();
+      ctx.strokeStyle='rgba(74,200,100,0.65)';ctx.lineWidth=2;ctx.stroke();
+      ctx.fillStyle='rgba(74,200,100,0.8)';
+      ctx.font='bold 8px -apple-system';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText('P1',gx,gy);
+    }
+  }
 
   // Target zone highlight (scripted mode)
   if(_PR.subMode==='scripted'&&_PR._suggestion&&_PR._suggestion.zone){
@@ -509,6 +639,21 @@ function _pracZoneTap(e){
   const zx=(e.clientX-rect.left)/rect.width;
   const zy=(e.clientY-rect.top)/rect.height;
 
+  // New duel call phase: snap to zone cell
+  if(_PR.subMode==='duel'&&_isNewDuelFmt(_PR.duelFormat)&&_PR._duelPhase==='call'){
+    const sz=_szCell(zx,zy);
+    if(sz){
+      _PR._duelCalledCell=sz;
+      _PR._duelCalledZx=0.2+sz.col*0.2+0.1;
+      _PR._duelCalledZy=0.2+sz.row*0.2+0.1;
+    }else{
+      _PR._duelCalledCell=null;_PR._duelCalledZx=null;_PR._duelCalledZy=null;
+    }
+    _updatePracHint();_updatePracConfirm();
+    requestAnimationFrame(()=>_drawPracZone());
+    return;
+  }
+
   if(_PR.trackIntended){
     if(_PR._izx===null){
       _PR._izx=zx;_PR._izy=zy;
@@ -533,6 +678,13 @@ function _pracZoneTouchStart(e){
 function _updatePracHint(){
   const hint=document.getElementById('prac-intended-hint');
   if(!hint||!_PR){return;}
+  if(_PR.subMode==='duel'&&_isNewDuelFmt(_PR.duelFormat)){
+    if(_PR._duelPhase==='call'){
+      hint.style.display='block';
+      hint.textContent=_PR._duelCalledCell?'Cell selected — tap to change':'Tap a zone cell to call';
+    }else{hint.style.display='none';}
+    return;
+  }
   if(!_PR.trackIntended){hint.style.display='none';return;}
   if(_PR._izx===null){hint.style.display='block';hint.textContent='1. Tap intended location';}
   else if(_PR._zx===null){hint.style.display='block';hint.textContent='2. Tap actual location';}
@@ -545,12 +697,16 @@ function _updatePracConfirm(){
   const mode=_PR.subMode;
   const hasZone=_PR._zx!==null;
   const hasType=_PR._pitchType!==null;
-  const hasResult=_PR._result!==null;
   const intOk=!_PR.trackIntended||(_PR._izx!==null&&_PR._zx!==null);
-  let ok=false;
-  if(mode==='command') ok=hasZone&&intOk&&hasType;
-  else if(mode==='scripted') ok=hasZone&&hasType;
-  else ok=hasZone&&hasType&&hasResult;
+  if(mode==='duel'&&_isNewDuelFmt(_PR.duelFormat)){
+    const phase=_PR._duelPhase;
+    btn.disabled=phase==='call'?(!(hasType&&_PR._duelCalledCell!==null)):(!(hasZone&&hasType));
+    const rbtn=document.getElementById('prac-repeat-btn');
+    if(rbtn)rbtn.style.display='none';
+    return;
+  }
+  // Result is optional for all modes — zone + type is enough to log
+  const ok=mode==='command'?hasZone&&intOk&&hasType:hasZone&&hasType;
   btn.disabled=!ok;
   const rbtn=document.getElementById('prac-repeat-btn');
   if(rbtn){
@@ -593,6 +749,7 @@ function pracRepeatPitch(){
 
 function pracConfirmPitch(){
   if(!_PR)return;
+  if(_PR.subMode==='duel'&&_isNewDuelFmt(_PR.duelFormat)){_pracDuelPhaseAdvance();return;}
   const pitcher=_PR.pitchers[_PR._pitcherIdx];
   const mode=_PR.subMode;
   const keep=_PR._keepScenario;
@@ -682,13 +839,133 @@ function pracDoSwitch(idx){
 }
 
 function pracUndo(){
-  if(!_PR||!_PR.pitches.length)return;
+  if(!_PR)return;
+  if(_PR.subMode==='duel'&&_isNewDuelFmt(_PR.duelFormat)){_pracDuelUndo();return;}
+  if(!_PR.pitches.length)return;
   const last=_PR.pitches.pop();
   if(last.pitcherId&&(_PR.subMode==='command'||_PR.subMode==='duel')){
     _PR.duelScores[last.pitcherId]=Math.max(0,(_PR.duelScores[last.pitcherId]||0)-(last.score||0));
   }
   if(_PR.subMode==='live_bullpen'){_PR._balls=0;_PR._strikes=0;}
   _renderPracSession();
+}
+
+function _pracDuelUndo(){
+  const phase=_PR._duelPhase;
+  const isScripted=_isScriptedDuelFmt(_PR.duelFormat);
+  if(phase==='throw2'){
+    // Pop throw1 pitch and go back to throw1
+    const last=_PR.pitches.pop();
+    if(last){
+      _PR.duelScores[last.pitcherId]=Math.max(0,(_PR.duelScores[last.pitcherId]||0)-(last.score||0));
+      _PR._duelPitchesThrown[last.pitcherId]=Math.max(0,(_PR._duelPitchesThrown[last.pitcherId]||0)-1);
+    }
+    _PR._duelPhase='throw1';
+    _PR._pitcherIdx=_PR._duelCallerIdx;
+    _PR._pitchType=_PR._duelCalledType;
+    _PR._zx=null;_PR._zy=null;_PR._duelP1Throw=null;
+  }else if(phase==='throw1'){
+    if(isScripted){
+      // Just reset zone tap
+      _PR._zx=null;_PR._zy=null;_PR._pitchType=_PR._duelCalledType;
+    }else{
+      // Go back to call
+      _PR._duelPhase='call';
+      _PR._pitcherIdx=_PR._duelCallerIdx;
+      _PR._pitchType=null;_PR._zx=null;_PR._zy=null;
+    }
+  }else{
+    // call phase: clear pending selection
+    _PR._duelCalledCell=null;_PR._duelCalledZx=null;_PR._duelCalledZy=null;
+    _PR._pitchType=null;
+  }
+  _renderPracSession();
+}
+
+function _pracDuelPhaseAdvance(){
+  if(!_PR)return;
+  const phase=_PR._duelPhase;
+  const isHorse=_isHorseFmt(_PR.duelFormat);
+  const isScripted=_isScriptedDuelFmt(_PR.duelFormat);
+
+  if(phase==='call'){
+    // Lock in call → move to throw1 (caller throws first)
+    _PR._duelCalledType=_PR._pitchType;
+    _PR._duelPhase='throw1';
+    _PR._pitchType=_PR._duelCalledType;
+    _PR._zx=null;_PR._zy=null;
+    _renderPracSession();
+    return;
+  }
+
+  if(phase==='throw1'){
+    const pitcher=_PR.pitchers[_PR._pitcherIdx];
+    const score=_pracCommandScore(_PR._duelCalledZx,_PR._duelCalledZy,_PR._zx,_PR._zy);
+    _PR.pitches.push({
+      id:'pp_'+Date.now(),num:_PR.pitches.length+1,
+      pitcherId:pitcher.appId,pitcherName:pitcher.name,
+      type:_PR._pitchType,zx:_PR._zx,zy:_PR._zy,
+      izx:_PR._duelCalledZx,izy:_PR._duelCalledZy,
+      result:null,score,duelRound:_PR._duelRound,duelPhase:'throw1',
+    });
+    _PR.duelScores[pitcher.appId]=(_PR.duelScores[pitcher.appId]||0)+score;
+    _PR._duelPitchesThrown[pitcher.appId]=(_PR._duelPitchesThrown[pitcher.appId]||0)+1;
+    _PR._duelP1Throw={zx:_PR._zx,zy:_PR._zy,score,pitcherId:pitcher.appId};
+    // Move to throw2 with other pitcher
+    _PR._duelPhase='throw2';
+    _PR._pitcherIdx=_PR.pitchers.findIndex((p,i)=>i!==_PR._duelCallerIdx);
+    if(_PR._pitcherIdx===-1)_PR._pitcherIdx=(_PR._duelCallerIdx+1)%_PR.pitchers.length;
+    _PR._pitchType=_PR._duelCalledType;
+    _PR._zx=null;_PR._zy=null;
+    _renderPracSession();
+    return;
+  }
+
+  if(phase==='throw2'){
+    const pitcher=_PR.pitchers[_PR._pitcherIdx];
+    const score=_pracCommandScore(_PR._duelCalledZx,_PR._duelCalledZy,_PR._zx,_PR._zy);
+    _PR.pitches.push({
+      id:'pp_'+Date.now(),num:_PR.pitches.length+1,
+      pitcherId:pitcher.appId,pitcherName:pitcher.name,
+      type:_PR._pitchType,zx:_PR._zx,zy:_PR._zy,
+      izx:_PR._duelCalledZx,izy:_PR._duelCalledZy,
+      result:null,score,duelRound:_PR._duelRound,duelPhase:'throw2',
+    });
+    _PR.duelScores[pitcher.appId]=(_PR.duelScores[pitcher.appId]||0)+score;
+    _PR._duelPitchesThrown[pitcher.appId]=(_PR._duelPitchesThrown[pitcher.appId]||0)+1;
+
+    if(isHorse){
+      const p1Hit=(_PR._duelP1Throw&&_PR._duelP1Throw.score>=1);
+      const p2Hit=score>=1;
+      const p1Id=_PR.pitchers[_PR._duelCallerIdx].appId;
+      const p2Id=pitcher.appId;
+      const word=_PR.horseWord||'HORSE';
+      if(p1Hit&&!p2Hit){
+        const existing=(_PR._duelLetters[p2Id]||'').length;
+        if(existing<word.length)_PR._duelLetters[p2Id]=word.slice(0,existing+1);
+      }else if(!p1Hit&&p2Hit){
+        const existing=(_PR._duelLetters[p1Id]||'').length;
+        if(existing<word.length)_PR._duelLetters[p1Id]=word.slice(0,existing+1);
+      }
+      const loser=_PR.pitchers.find(p=>(_PR._duelLetters[p.appId]||'').length>=word.length);
+      if(loser){pracSessionEnd(true);return;}
+    }else{
+      if(_PR._duelRound>=_PR.pitchCount){pracSessionEnd(true);return;}
+    }
+
+    // Advance to next round
+    _PR._duelRound++;
+    _PR._duelCallerIdx=(_PR._duelCallerIdx+1)%_PR.pitchers.length;
+    _PR._duelPhase=isScripted?'throw1':'call';
+    _PR._pitcherIdx=_PR._duelCallerIdx;
+    _PR._duelCalledType=null;_PR._duelCalledCell=null;_PR._duelCalledZx=null;_PR._duelCalledZy=null;
+    _PR._duelP1Throw=null;_PR._pitchType=null;_PR._zx=null;_PR._zy=null;
+    if(isScripted){
+      _PR._suggestion=_pracNextSuggestion(_PR.pitchers[_PR._duelCallerIdx]);
+      _pracApplyScriptedDuelCall(_PR._suggestion);
+    }
+    _renderPracSession();
+  }
 }
 
 // ── Analytics helpers ──
@@ -732,10 +1009,21 @@ function _pracAnalytics(prac){
       <div class="prac-stat-item"><div class="prac-stat-val">${Math.round(pts/pc*10)/10}</div><div class="prac-stat-lbl">Avg/Pitch</div></div>
       <div class="prac-stat-item"><div class="prac-stat-val">${pc}</div><div class="prac-stat-lbl">Pitches</div></div>`;
   }else if(mode==='duel'){
-    const pts=pitches.reduce((a,p)=>a+(p.score||0),0);
-    statsHTML=`
-      <div class="prac-stat-item"><div class="prac-stat-val">${pts}</div><div class="prac-stat-lbl">Pts Total</div></div>
-      <div class="prac-stat-item"><div class="prac-stat-val">${pc}</div><div class="prac-stat-lbl">Pitches</div></div>`;
+    const duelFmt=prac.duelFormat||'alternate';
+    if(_isHorseFmt(duelFmt)){
+      const letters=prac.duelLetters||{};
+      const word=prac.horseWord||'HORSE';
+      statsHTML=(prac.pitchers||[]).map(p=>{
+        const got=(letters[p.appId]||'').length;
+        return`<div class="prac-stat-item"><div class="prac-stat-val" style="font-size:15px;">${word.slice(0,got)||'—'}</div><div class="prac-stat-lbl">${p.name.split(' ').pop()}</div></div>`;
+      }).join('');
+      statsHTML+=`<div class="prac-stat-item"><div class="prac-stat-val">${pc}</div><div class="prac-stat-lbl">Pitches</div></div>`;
+    }else{
+      const pts=pitches.reduce((a,p)=>a+(p.score||0),0);
+      statsHTML=`
+        <div class="prac-stat-item"><div class="prac-stat-val">${pts}</div><div class="prac-stat-lbl">Pts Total</div></div>
+        <div class="prac-stat-item"><div class="prac-stat-val">${pc}</div><div class="prac-stat-lbl">Pitches</div></div>`;
+    }
   }else{
     statsHTML=`<div class="prac-stat-item"><div class="prac-stat-val">${pc}</div><div class="prac-stat-lbl">Pitches</div></div>`;
   }
@@ -743,13 +1031,27 @@ function _pracAnalytics(prac){
   // Duel winner block
   let duelHTML='';
   if(mode==='duel'&&pitchers.length>=2){
-    const scores=pitchers.map(p=>({name:p.name,pts:(prac.duelScores||{})[p.appId]||0}));
-    scores.sort((a,b)=>b.pts-a.pts);
-    duelHTML=`<div style="background:rgba(74,158,255,0.08);border:1px solid rgba(74,158,255,0.2);border-radius:var(--r);padding:12px;text-align:center;margin-bottom:10px;">
-      <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:3px;">Winner</div>
-      <div style="font-size:18px;font-weight:800;">${scores[0].name}</div>
-      <div style="font-size:12px;color:var(--accent);margin-top:2px;">${scores[0].pts} pts</div>
-    </div>`;
+    const duelFmt=prac.duelFormat||'alternate';
+    if(_isHorseFmt(duelFmt)){
+      const letters=prac.duelLetters||{};
+      const word=prac.horseWord||'HORSE';
+      const ranked=pitchers.map(p=>({name:p.name,got:(letters[p.appId]||'').length})).sort((a,b)=>a.got-b.got);
+      const tied=ranked[0].got===ranked[ranked.length-1].got;
+      const winner=ranked[0],loser=ranked[ranked.length-1];
+      duelHTML=`<div style="background:rgba(74,158,255,0.08);border:1px solid rgba(74,158,255,0.2);border-radius:var(--r);padding:12px;text-align:center;margin-bottom:10px;">
+        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:3px;">${tied?'Tied':'Winner'}</div>
+        <div style="font-size:18px;font-weight:800;">${tied?ranked.map(p=>p.name.split(' ').pop()).join(' & '):winner.name}</div>
+        ${!tied?`<div style="font-size:12px;color:var(--text3);margin-top:2px;">${loser.name}: ${word.slice(0,loser.got)||'No letters'}</div>`:''}
+      </div>`;
+    }else{
+      const scores=pitchers.map(p=>({name:p.name,pts:(prac.duelScores||{})[p.appId]||0}));
+      scores.sort((a,b)=>b.pts-a.pts);
+      duelHTML=`<div style="background:rgba(74,158,255,0.08);border:1px solid rgba(74,158,255,0.2);border-radius:var(--r);padding:12px;text-align:center;margin-bottom:10px;">
+        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:3px;">Winner</div>
+        <div style="font-size:18px;font-weight:800;">${scores[0].name}</div>
+        <div style="font-size:12px;color:var(--accent);margin-top:2px;">${scores[0].pts} pts</div>
+      </div>`;
+    }
   }
 
   // Legend
@@ -808,7 +1110,7 @@ function _pracAnalytics(prac){
   }
 
   return`${duelHTML}<div class="prac-stat-row">${statsHTML}</div>
-    <canvas id="prac-heat-cv" style="width:100%;aspect-ratio:3/2;border-radius:var(--rsm);display:block;background:rgba(0,0,0,0.55);"></canvas>
+    <canvas id="prac-heat-cv" style="width:100%;aspect-ratio:190/210;border-radius:var(--rsm);display:block;background:rgba(0,0,0,0.55);"></canvas>
     ${legendHTML}
     ${types.length?`<div style="margin-top:12px;">
       <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:4px;">Pitch Mix</div>
@@ -875,25 +1177,31 @@ function pracSessionEnd(auto=false){
   showModal(auto?'Session Complete':'End Session',`
     ${_pracAnalytics(_PR)}
     <div style="height:14px;"></div>
-    <button class="btn btn-primary btn-block" onclick="pracSaveSession()" style="margin-bottom:10px;">Save Session</button>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+      <button class="btn btn-primary" onclick="pracSaveSession()">Save</button>
+      <button class="btn btn-primary" onclick="pracSaveSession(true)">Save &amp; View Stats</button>
+    </div>
     <button class="btn btn-danger btn-block" onclick="pracDiscardSession()">Discard Session</button>
   `);
   requestAnimationFrame(()=>_drawPracHeatMap(_PR.pitches,_PR.subMode));
 }
 
-function pracSaveSession(){
+function pracSaveSession(viewStats=false){
   if(!_PR)return;
   S.practices.push({
     id:_PR.id,date:_PR.date,subMode:_PR.subMode,
     pitchers:_PR.pitchers.map(p=>({name:p.name,throws:p.throws,num:p.num||'',appId:p.appId,sessionOnly:!!p.sessionOnly})),
     pitches:_PR.pitches,duelScores:_PR.duelScores,
+    duelFormat:_PR.duelFormat||'alternate',
+    horseWord:_PR.horseWord||'HORSE',
+    duelLetters:_PR.subMode==='duel'?{..._PR._duelLetters}:undefined,
     fbPreset:_PR.fbPreset,pitchCount:_PR.pitchCount,
   });
   save();
   const sessOnly=_PR.pitchers.filter(p=>p.sessionOnly);
   _PR=null;hideModal();
   if(sessOnly.length){_pracQuickAddQueue=[...sessOnly];_pracQuickAddNext();}
-  else{go('practice');}
+  else{go(viewStats?'practice-stats':'practice');}
 }
 function pracDiscardSession(){_PR=null;hideModal();go('practice');}
 
@@ -911,4 +1219,188 @@ function _pracDoQuickAdd(){
   const p=_pracQuickAddQueue.shift();
   if(p){S.pitchers.push({name:p.name,throws:p.throws||'R',num:p.num||'',arsenal:p.arsenal||['FB'],active:true});save();}
   hideModal();_pracQuickAddNext();
+}
+
+// ══════════════════════════════════════════
+// PRACTICE SEASON STATS
+// ══════════════════════════════════════════
+
+let _pracStatsPitcher=null;
+
+function renderPracSeasonStats(){
+  _pracStatsPitcher=null;
+  _renderPracStatsBody();
+}
+
+function _setPracStatsPitcher(appId){
+  _pracStatsPitcher=appId;
+  _renderPracStatsBody();
+}
+
+function _renderPracStatsBody(){
+  const el=document.getElementById('prac-stats-body');
+  if(!el)return;
+  const allSessions=S.practices||[];
+
+  if(!allSessions.length){
+    el.innerHTML=`<div style="text-align:center;padding:40px 24px;">
+      <div style="font-size:15px;color:var(--text3);margin-bottom:16px;">No practice sessions saved yet.</div>
+      <button class="btn btn-primary" onclick="go('practice')">Start a Session</button>
+    </div>`;
+    return;
+  }
+
+  // Collect all unique pitchers across all sessions
+  const allPitchersMap={};
+  allSessions.forEach(sess=>(sess.pitchers||[]).forEach(p=>{
+    if(!allPitchersMap[p.appId])allPitchersMap[p.appId]={name:p.name,appId:p.appId};
+  }));
+  const allPitchers=Object.values(allPitchersMap).sort((a,b)=>a.name.localeCompare(b.name));
+
+  // Filter by selected pitcher
+  const sessions=_pracStatsPitcher?
+    allSessions.filter(s=>(s.pitchers||[]).some(p=>p.appId===_pracStatsPitcher)):
+    allSessions;
+  const allPitches=sessions.flatMap(s=>{
+    const pp=s.pitches||[];
+    return _pracStatsPitcher?pp.filter(p=>p.pitcherId===_pracStatsPitcher):pp;
+  });
+  const pc=allPitches.length;
+
+  // Pitcher filter row
+  const filterRow=allPitchers.length>1?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">
+    <button class="prac-t-btn${_pracStatsPitcher===null?' on':''}" onclick="_setPracStatsPitcher(null)" style="border-radius:20px;padding:6px 12px;">All</button>
+    ${allPitchers.map(p=>`<button class="prac-t-btn${_pracStatsPitcher===p.appId?' on':''}" onclick="_setPracStatsPitcher('${p.appId}')" style="border-radius:20px;padding:6px 12px;">${p.name.split(' ').pop()}</button>`).join('')}
+  </div>`:'' ;
+
+  if(!pc){
+    el.innerHTML=`<div style="padding:14px 16px;">${filterRow}<div style="text-align:center;padding:30px 0;color:var(--text3);font-size:14px;">No pitches logged for this pitcher.</div></div>`;
+    return;
+  }
+
+  // ── Summary ──
+  const szCount=allPitches.filter(p=>_szCell(p.zx,p.zy)!==null).length;
+  const szPct=Math.round(szCount/pc*100);
+  const summaryHTML=`<div class="prac-stat-row" style="margin-bottom:14px;">
+    <div class="prac-stat-item"><div class="prac-stat-val">${sessions.length}</div><div class="prac-stat-lbl">Sessions</div></div>
+    <div class="prac-stat-item"><div class="prac-stat-val">${pc}</div><div class="prac-stat-lbl">Pitches</div></div>
+    <div class="prac-stat-item"><div class="prac-stat-val">${szPct}%</div><div class="prac-stat-lbl">Zone%</div></div>
+  </div>`;
+
+  // ── Zone% by Mode ──
+  const modeRows=PRAC_MODES.map(m=>{
+    const mSess=sessions.filter(s=>s.subMode===m.id);
+    if(!mSess.length)return'';
+    const mPitches=mSess.flatMap(s=>{
+      const pp=s.pitches||[];
+      return _pracStatsPitcher?pp.filter(p=>p.pitcherId===_pracStatsPitcher):pp;
+    });
+    const n=mPitches.length;if(!n)return'';
+    const mSz=mPitches.filter(p=>_szCell(p.zx,p.zy)!==null).length;
+    const mZone=Math.round(mSz/n*100);
+    const col=mZone>=65?'#4ac864':mZone>=45?'var(--text)':'#e85555';
+    return`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid var(--border);">
+      <div>
+        <div style="font-size:13px;font-weight:600;">${m.title}</div>
+        <div style="font-size:11px;color:var(--text3);">${mSess.length} session${mSess.length!==1?'s':''} · ${n} pitches</div>
+      </div>
+      <div style="font-size:18px;font-weight:800;color:${col};">${mZone}%</div>
+    </div>`;
+  }).filter(Boolean).join('');
+  const modeHTML=modeRows?`<div style="margin-bottom:14px;">
+    <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:4px;">By Mode</div>
+    <div style="background:var(--bg2);border-radius:var(--rsm);overflow:hidden;">${modeRows}</div>
+  </div>`:'';
+
+  // ── Career by Pitch Type ──
+  const typeMap={};
+  allPitches.forEach(p=>{if(p.type)typeMap[p.type]=(typeMap[p.type]||0)+1;});
+  const types=Object.entries(typeMap).sort((a,b)=>b[1]-a[1]);
+  const hasResults=allPitches.some(p=>p.result);
+  let typeHTML='';
+  if(types.length){
+    const rows=types.map(([t,n])=>{
+      const tp=allPitches.filter(p=>p.type===t&&p.zx!=null);
+      const inZone=tp.filter(p=>_szCell(p.zx,p.zy)!==null).length;
+      const zonePct=tp.length?Math.round(inZone/tp.length*100):0;
+      const tHasRes=tp.some(p=>p.result);
+      const strCount=tp.filter(p=>['CS','Sw&M','Foul'].includes(p.result)).length;
+      const strPct=hasResults&&tHasRes?Math.round(strCount/tp.length*100):null;
+      const zCol=zonePct>=65?'#4ac864':zonePct>=45?'var(--text)':'#e85555';
+      const sCol=strPct!=null?(strPct>=65?'#4ac864':strPct>=45?'var(--text)':'#e85555'):'var(--text)';
+      return`<div style="display:flex;align-items:center;padding:7px 10px;border-bottom:1px solid var(--border);gap:6px;">
+        <span style="font-size:13px;font-weight:700;flex:0 0 36px;">${t}</span>
+        <span style="font-size:11px;color:var(--text3);flex:0 0 54px;">${n} · ${Math.round(n/pc*100)}%</span>
+        <span style="font-size:13px;font-weight:700;flex:1;color:${zCol};">${zonePct}%<span style="font-size:10px;font-weight:400;color:var(--text3);"> zone</span></span>
+        ${strPct!=null?`<span style="font-size:13px;font-weight:700;flex:1;color:${sCol};">${strPct}%<span style="font-size:10px;font-weight:400;color:var(--text3);"> str</span></span>`:''}
+      </div>`;
+    }).join('');
+    typeHTML=`<div style="margin-bottom:14px;">
+      <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:4px;">Career by Pitch Type</div>
+      <div style="background:var(--bg2);border-radius:var(--rsm);overflow:hidden;">${rows}</div>
+    </div>`;
+  }
+
+  // ── Miss Direction ──
+  const locPitches=allPitches.filter(p=>p.izx!=null&&p.zx!=null);
+  let missDirHTML='';
+  if(locPitches.length>=4){
+    const missed=locPitches.filter(p=>_szCell(p.zx,p.zy)===null);
+    const mm=missed.length;
+    if(mm>=2){
+      const mHigh=missed.filter(p=>p.zy<0.2).length;
+      const mLow=missed.filter(p=>p.zy>0.8).length;
+      const mLeft=missed.filter(p=>p.zx<0.2&&p.zy>=0.2&&p.zy<=0.8).length;
+      const mRight=missed.filter(p=>p.zx>0.8&&p.zy>=0.2&&p.zy<=0.8).length;
+      const missRate=Math.round(mm/locPitches.length*100);
+      missDirHTML=`<div style="margin-bottom:14px;">
+        <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:4px;">Miss Direction <span style="font-weight:400;letter-spacing:0;text-transform:none;">(${missRate}% miss rate)</span></div>
+        <div style="background:var(--bg2);border-radius:var(--rsm);padding:10px 12px;">
+          ${[['HIGH',mHigh],['LOW',mLow],['LEFT',mLeft],['RIGHT',mRight]].map(([lbl,n])=>`
+            <div style="display:grid;grid-template-columns:44px 1fr 52px;align-items:center;gap:6px;margin-bottom:6px;">
+              <span style="font-size:10px;font-weight:700;color:var(--text3);">${lbl}</span>
+              <div style="background:var(--bg3);border-radius:2px;height:6px;overflow:hidden;">
+                <div style="height:100%;width:${mm?Math.round(n/mm*100):0}%;background:rgba(232,85,85,0.75);border-radius:2px;"></div>
+              </div>
+              <span style="font-size:11px;color:var(--text2);text-align:right;">${n} · ${mm?Math.round(n/mm*100):0}%</span>
+            </div>`).join('')}
+        </div>
+      </div>`;
+    }
+  }
+
+  // ── Session History ──
+  const histRows=[...sessions].reverse().map(sess=>{
+    const sPitches=_pracStatsPitcher?(sess.pitches||[]).filter(p=>p.pitcherId===_pracStatsPitcher):(sess.pitches||[]);
+    const n=sPitches.length;
+    const szN=sPitches.filter(p=>_szCell(p.zx,p.zy)!==null).length;
+    let keyStat='';
+    if(sess.subMode==='command'||sess.subMode==='duel'){
+      const pts=sPitches.reduce((a,p)=>a+(p.score||0),0);
+      keyStat=`${pts} pts`;
+    }else{
+      keyStat=n?`${Math.round(szN/n*100)}% zone`:'';
+    }
+    const pitcherLabel=_pracStatsPitcher?'':(sess.pitchers||[]).length?` · ${(sess.pitchers||[]).map(p=>p.name.split(' ').pop()).join(', ')}`:'';
+    return`<div class="prac-rec-card" onclick="pracViewSession('${sess.id}')">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div style="font-size:14px;font-weight:700;">${_pracModeLabel(sess.subMode)}</div>
+        <div style="font-size:11px;color:var(--text3);">${sess.date}</div>
+      </div>
+      <div style="font-size:12px;color:var(--text3);margin-top:4px;">${n} pitches · ${keyStat}${pitcherLabel}</div>
+    </div>`;
+  }).join('');
+  const histHTML=`<div>
+    <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:4px;">Session History</div>
+    ${histRows}
+  </div>`;
+
+  el.innerHTML=`<div style="padding:14px 16px;">
+    ${filterRow}
+    ${summaryHTML}
+    ${modeHTML}
+    ${typeHTML}
+    ${missDirHTML}
+    ${histHTML}
+  </div>`;
 }
