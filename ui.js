@@ -97,6 +97,7 @@ function navTo(screen){
   if(screen==='stats'){ showStats(_curScreen); return; }
   if(screen==='analytics'){ showAnalytics(null,_curScreen); return; }
   if(screen==='command'){ showCommand(_curScreen); return; }
+  if(screen==='swing-analytics'){ showSwingAnalytics(_curScreen); return; }
   go(screen);
 }
 
@@ -196,6 +197,13 @@ function renderHome(){
       <div class="home-btn-sec-left">
         <div>Command</div>
         <div class="home-btn-sec-sub">Zone tendencies · miss direction · hit spot</div>
+      </div>
+      <div class="home-btn-sec-right"><span class="home-chevron">›</span></div>
+    </button>
+    <button class="home-btn-sec" onclick="showSwingAnalytics('home')">
+      <div class="home-btn-sec-left">
+        <div>Swing Analytics</div>
+        <div class="home-btn-sec-sub">Swing% · Z-Swing% · Chase% · Whiff% · zone map</div>
       </div>
       <div class="home-btn-sec-right"><span class="home-chevron">›</span></div>
     </button>

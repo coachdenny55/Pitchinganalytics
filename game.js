@@ -238,8 +238,8 @@ function showOpponents(){
   let html=`<button class="btn btn-primary btn-block" onclick="saNewOpponent()" style="margin-bottom:14px;">+ Add Opponent</button>`;
 
   if(saved.length){
-    html+=saved.map((o,i)=>`
-      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="saEditOpponent(${i})">
+    html+=saved.map(o=>`
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="showOpponentReport('${o.id}')">
         <div style="font-size:16px;font-weight:700;">${o.name}</div>
         <div style="display:flex;align-items:center;gap:10px;">
           <div style="font-size:12px;color:var(--text3);">${o.roster.length} players</div>
@@ -262,6 +262,61 @@ function showOpponents(){
   }
 
   showModal('Opponents',`<div style="max-height:70vh;overflow-y:auto;-webkit-overflow-scrolling:touch;">${html}</div>`);
+}
+
+function showOpponentReport(oppId){
+  const o=S.opponents.find(x=>x.id===oppId); if(!o) return;
+  const idx=S.opponents.indexOf(o);
+
+  const playerCards=o.roster.map(p=>{
+    const careerPitches=[];
+    (S.games||[]).forEach(g=>(g.pitches||[]).forEach(q=>{ if(q.bName===p.name) careerPitches.push(q); }));
+    const gameIds=new Set((S.games||[]).filter(g=>(g.pitches||[]).some(q=>q.bName===p.name)).map(g=>g.id));
+    const stats=_computeSwingStats(careerPitches);
+    const n=careerPitches.length;
+
+    const chip=(label,val,mid)=>{
+      const fmt=val===null?'—':_anFmt(val,mid);
+      const col=val!==null?_anColor(val,mid):'color:var(--text3)';
+      return `<div style="display:flex;flex-direction:column;align-items:center;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--rsm);padding:5px 7px;min-width:46px;">
+        <div style="font-size:12px;font-weight:800;${col||'color:var(--text)'};">${fmt}</div>
+        <div style="font-size:8px;color:var(--text3);font-weight:700;margin-top:1px;">${label}</div>
+      </div>`;
+    };
+
+    const statsRow=n?`
+      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px;">
+        ${chip('Swing%',stats.swingPct,'swing')}
+        ${chip('Chase%',stats.chasePct,'chase')}
+        ${chip('Whiff%',stats.whiffPct,'whiff')}
+        ${chip('Z-Con%',stats.zConPct,'zcon')}
+      </div>
+      ${_zoneSummaryLine(careerPitches,p.hand||'R')}
+      <div style="font-size:10px;color:var(--text3);margin-top:6px;">${n} pitch${n!==1?'es':''} · ${gameIds.size} game${gameIds.size!==1?'s':''}</div>`
+      :`<div style="font-size:11px;color:var(--text3);margin-top:6px;">No data yet</div>`;
+
+    const safeName=p.name.replace(/'/g,"\\'");
+    const safeHand=(p.hand||'R').replace(/'/g,"\\'");
+    return `<div onclick="${n?`showBatterTendencies('${safeName}','${safeHand}')`:''}" style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;margin-bottom:8px;${n?'cursor:pointer;':''}">
+      <div style="display:flex;align-items:center;gap:8px;">
+        ${p.num?`<div style="font-size:12px;color:var(--text3);font-weight:700;min-width:24px;">#${p.num}</div>`:''}
+        <div style="flex:1;font-size:15px;font-weight:700;">${p.name}</div>
+        ${p.pos?`<div style="font-size:11px;color:var(--text3);">${p.pos}</div>`:''}
+        <div style="font-size:11px;font-weight:700;background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:2px 8px;color:var(--text2);flex-shrink:0;">Bats ${p.hand||'R'}</div>
+        ${n?`<div style="color:var(--accent);font-size:16px;">›</div>`:''}
+      </div>
+      ${statsRow}
+    </div>`;
+  }).join('');
+
+  const emptyMsg=!o.roster.length?`<div style="text-align:center;padding:24px 0;color:var(--text3);font-size:13px;">No players in roster yet.</div>`:'';
+
+  showModal(o.name,`
+    <button class="btn btn-block" onclick="saEditOpponent(${idx});hideModal();" style="margin-bottom:14px;">Edit Roster</button>
+    <div style="max-height:72vh;overflow-y:auto;-webkit-overflow-scrolling:touch;">
+      ${emptyMsg}${playerCards}
+    </div>
+  `);
 }
 
 function saNewOpponent(prefill=''){
@@ -2839,6 +2894,46 @@ function showABDetails(abNum){
       </div>
     `;
   }).join('');
+
+  // Career tendency data for this batter
+  const batterName = pitches[0]?.bName || '';
+  const batterHand = pitches[0]?.bHand || '';
+  const careerPitches = [];
+  (S.games||[]).forEach(g=>(g.pitches||[]).forEach(p=>{ if(p.bName===batterName) careerPitches.push(p); }));
+  const gameCount = new Set((S.games||[]).filter(g=>(g.pitches||[]).some(p=>p.bName===batterName)).map(g=>g.id)).size;
+  const stats = _computeSwingStats(careerPitches);
+  const locatedN = careerPitches.filter(p=>p.zx!=null).length;
+
+  const statDefs=[
+    {label:'Swing%', val:stats.swingPct,  mid:'swing'},
+    {label:'Z-Swing%',val:stats.zSwingPct,mid:'zswing'},
+    {label:'Chase%',  val:stats.chasePct, mid:'chase'},
+    {label:'Whiff%',  val:stats.whiffPct, mid:'whiff'},
+    {label:'Z-Con%',  val:stats.zConPct,  mid:'zcon'},
+  ];
+  const statCards = statDefs.map(({label,val,mid})=>{
+    const fmt=val===null?'—':_anFmt(val,mid);
+    const col=val!==null?_anColor(val,mid):'color:var(--text3)';
+    return `<div style="flex:1;min-width:0;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--rsm);padding:6px 3px;text-align:center;">
+      <div style="font-size:13px;font-weight:800;${col||'color:var(--text)'};">${fmt}</div>
+      <div style="font-size:9px;color:var(--text3);margin-top:2px;font-weight:700;">${label}</div>
+    </div>`;
+  }).join('');
+
+  const tendencyHTML = batterName ? `
+    <div style="margin-top:14px;border-top:1px solid var(--border2);padding-top:12px;">
+      <div style="font-size:10px;font-weight:700;letter-spacing:1px;color:var(--text3);text-transform:uppercase;margin-bottom:8px;">${batterName}${batterHand?' · Bats '+batterHand:''} · Career Tendencies</div>
+      ${careerPitches.length ? `
+        <div style="font-size:10px;color:var(--text3);margin-bottom:8px;">${careerPitches.length} pitch${careerPitches.length!==1?'es':''} · ${gameCount} game${gameCount!==1?'s':''}</div>
+        <div style="display:flex;gap:4px;margin-bottom:10px;">${statCards}</div>
+        ${_renderZoneSummaryHTML(careerPitches,batterHand)}
+        ${locatedN>0?`<div style="display:flex;justify-content:center;margin-top:2px;">
+          <canvas id="ab-tend-cv" width="200" height="220" style="display:block;width:100%;max-width:220px;border-radius:var(--rsm);"></canvas>
+        </div>
+        <div style="font-size:10px;color:var(--text3);text-align:center;margin-top:4px;">${locatedN} located pitch${locatedN!==1?'es':''}</div>`:''}
+      ` : `<div style="font-size:12px;color:var(--text3);text-align:center;padding:8px 0;">No prior pitch data for this batter.</div>`}
+    </div>` : '';
+
   showModal(`AB${abNum} · ${summary}`,`
     <div class="ab-detail-grid">
       <div class="ab-detail-visual">
@@ -2854,8 +2949,10 @@ function showABDetails(abNum){
         ${rows}
       </div>
     </div>
+    ${tendencyHTML}
   `);
   renderABDetailCanvas(abNum);
+  if(locatedN>0) requestAnimationFrame(()=>_drawSwingMapCanvas('ab-tend-cv', careerPitches));
 }
 function renderABDetailCanvas(abNum){
   const cv=document.getElementById('ab-detail-cv');

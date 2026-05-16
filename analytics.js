@@ -162,6 +162,12 @@ function showAnalytics(gameId,from='home'){
   _anFilter={games:gameId?[gameId]:[],pitcher:[],hand:'both',sit:'all',trip:'all',loc:'all',zone:'all',bipZone:'all'};
   go('analytics');
 }
+function showSwingAnalytics(from='home'){
+  _anGameId=null; _anFrom=from;
+  _anMetric='usage'; _anDeep=false; _anMatrixView='swing_map'; _anZonePT='_all';
+  _anFilter={games:[],pitcher:[],hand:'both',sit:'all',trip:'all',loc:'all',zone:'all',bipZone:'all'};
+  go('analytics');
+}
 function analyticsBack(){ go(_anFrom); }
 function setAnMetric(id){ _anMetric=id; renderAnalytics(); }
 function setAnFilter(k,v){ _anFilter[k]=v; renderAnalytics(); }
@@ -1436,6 +1442,67 @@ function _renderSwingMap(pitches){
     <div style="font-size:10px;color:var(--text3);text-align:center;">${locatedN} located · ${filtered.length-locatedN} unlocated excluded${_anZonePT!=='_all'?' · '+_anZonePT:''}</div>`;
 }
 
+// ── Zone hot-spot summary (data only — no opinions) ──────────────────────────
+const _ZONE_LABEL_RHH={1:'Up-In',2:'Up-Mid',3:'Up-Away',4:'Mid-In',5:'Heart',6:'Mid-Away',7:'Low-In',8:'Low-Mid',9:'Low-Away',11:'Chase-In',12:'Chase-Away',13:'Low-Chase-In',14:'Low-Chase-Away'};
+const _ZONE_LABEL_LHH={1:'Up-Away',2:'Up-Mid',3:'Up-In',4:'Mid-Away',5:'Heart',6:'Mid-In',7:'Low-Away',8:'Low-Mid',9:'Low-In',11:'Chase-Away',12:'Chase-In',13:'Low-Chase-Away',14:'Low-Chase-In'};
+function _zoneLabel(zn,bHand){ return (bHand==='L'?_ZONE_LABEL_LHH:_ZONE_LABEL_RHH)[zn]||('Zone '+zn); }
+
+function _computeZoneHotSpots(pitches,bHand){
+  const hitZ={},whiffZ={};
+  pitches.forEach(p=>{
+    if(p.zx==null||p.zy==null) return;
+    const zn=getZoneNum(p.zx,p.zy); if(!zn) return;
+    const isHit=p.bipOut==='hit'||p.rt==='hr';
+    const isWhiff=p.rt==='swstr'||p.rt==='k'||p.rt==='d3k';
+    if(isHit)  hitZ[zn]=(hitZ[zn]||0)+1;
+    if(isWhiff) whiffZ[zn]=(whiffZ[zn]||0)+1;
+  });
+  const toList=obj=>Object.entries(obj)
+    .map(([zn,count])=>({zn:Number(zn),count,label:_zoneLabel(Number(zn),bHand)}))
+    .sort((a,b)=>b.count-a.count).slice(0,2);
+  return{hitZones:toList(hitZ),whiffZones:toList(whiffZ)};
+}
+
+function _renderZoneSummaryHTML(pitches,bHand){
+  const located=pitches.filter(p=>p.zx!=null&&p.zy!=null);
+  if(located.length<3) return '';
+  const{hitZones,whiffZones}=_computeZoneHotSpots(located,bHand);
+  if(!hitZones.length&&!whiffZones.length) return '';
+  const hitSet=new Set(hitZones.map(z=>z.zn));
+  const whiffSet=new Set(whiffZones.map(z=>z.zn));
+  const grid=[1,2,3,4,5,6,7,8,9].map(zn=>{
+    const h=hitSet.has(zn),w=whiffSet.has(zn);
+    const bg=h&&w?'rgba(255,200,0,0.45)':h?'rgba(85,232,122,0.40)':w?'rgba(232,85,85,0.40)':'rgba(255,255,255,0.06)';
+    const bd=h&&w?'1.5px solid rgba(255,200,0,0.6)':h?'1.5px solid rgba(85,232,122,0.5)':w?'1.5px solid rgba(232,85,85,0.5)':'1px solid rgba(255,255,255,0.10)';
+    return `<div style="aspect-ratio:1/1;background:${bg};border:${bd};border-radius:3px;"></div>`;
+  }).join('');
+  const hotPill=hitZones[0]?`<div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
+    <div style="font-size:8px;font-weight:700;color:rgba(85,232,122,0.7);text-transform:uppercase;letter-spacing:0.5px;">Hot</div>
+    <div style="background:rgba(85,232,122,0.15);border:1px solid rgba(85,232,122,0.45);border-radius:20px;padding:5px 12px;font-size:12px;font-weight:700;color:rgba(85,232,122,1.0);">${hitZones[0].label}</div>
+  </div>`:'';
+  const missPill=whiffZones[0]?`<div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
+    <div style="font-size:8px;font-weight:700;color:rgba(232,85,85,0.7);text-transform:uppercase;letter-spacing:0.5px;">Miss</div>
+    <div style="background:rgba(232,85,85,0.15);border:1px solid rgba(232,85,85,0.45);border-radius:20px;padding:5px 12px;font-size:12px;font-weight:700;color:rgba(232,85,85,1.0);">${whiffZones[0].label}</div>
+  </div>`:'';
+  return `<div style="margin-top:12px;border-top:1px solid var(--border2);padding-top:12px;">
+    <div style="display:flex;gap:14px;align-items:center;">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:3px;width:72px;flex-shrink:0;">${grid}</div>
+      <div style="display:flex;gap:16px;flex:1;justify-content:center;">${hotPill}${missPill}</div>
+    </div>
+  </div>`;
+}
+
+function _zoneSummaryLine(pitches,bHand){
+  const located=pitches.filter(p=>p.zx!=null&&p.zy!=null);
+  if(located.length<3) return '';
+  const{hitZones,whiffZones}=_computeZoneHotSpots(located,bHand);
+  if(!hitZones.length&&!whiffZones.length) return '';
+  const parts=[];
+  if(hitZones[0]) parts.push(`<span style="background:rgba(85,232,122,0.15);border:1px solid rgba(85,232,122,0.40);border-radius:20px;padding:2px 9px;font-size:10px;font-weight:700;color:rgba(85,232,122,1.0);">Hot: ${hitZones[0].label}</span>`);
+  if(whiffZones[0]) parts.push(`<span style="background:rgba(232,85,85,0.15);border:1px solid rgba(232,85,85,0.40);border-radius:20px;padding:2px 9px;font-size:10px;font-weight:700;color:rgba(232,85,85,1.0);">Miss: ${whiffZones[0].label}</span>`);
+  return parts.length?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">${parts.join('')}</div>`:'';
+}
+
 function showBatterTendencies(batterName,batterHand){
   const allPitches=[];
   const abSet=new Set(), gameSet=new Set();
@@ -1485,8 +1552,9 @@ function showBatterTendencies(batterName,batterHand){
     ${nWarn}
     <div style="font-size:11px;color:var(--text3);margin-bottom:10px;">Bats ${batterHand||'?'} · ${allPitches.length} pitches · ${abSet.size} AB${abSet.size!==1?'s':''} · ${gameSet.size} game${gameSet.size!==1?'s':''}</div>
     <div style="display:flex;gap:5px;margin-bottom:12px;">${statCards}</div>
+    ${_renderZoneSummaryHTML(allPitches,batterHand)}
     ${locatedN>0?`
-      <div style="display:flex;justify-content:center;margin-bottom:6px;">
+      <div style="display:flex;justify-content:center;margin-bottom:6px;margin-top:12px;">
         <canvas id="an-batter-cv" width="200" height="220" style="display:block;width:100%;max-width:220px;border-radius:var(--rsm);"></canvas>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:4px;">${legend}</div>
